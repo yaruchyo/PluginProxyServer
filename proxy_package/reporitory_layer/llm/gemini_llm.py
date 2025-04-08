@@ -5,7 +5,7 @@ from google.genai import types # Import types
 from google.generativeai.types import generation_types
 from typing import Any, Optional, List, Dict, Union, Iterator
 # Removed Response import as it's domain layer, not directly used here
-# from ...domain_layer.file_responce import Response # Use relative import
+from ...domain_layer.file_responce import Response # Use relative import
 
 class GeminiLLM:
     """Encapsulates Google Gemini API interactions."""

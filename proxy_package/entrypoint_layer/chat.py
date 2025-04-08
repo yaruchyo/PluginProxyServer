@@ -112,31 +112,6 @@ async def chat_completions(
                      logger.warning(f"⚠️ Gemini model {llm_client.model_name} might not fully support JSON mode. Use 1.5-pro.")
                  generation_config_dict['response_mime_type'] = 'application/json'
                  # Gemini doesn't need prompt injection for basic JSON mode when mime_type is set
-             elif is_azure:
-                 # Azure needs prompt injection for JSON mode (as of typical API versions)
-                 logger.info("Injecting JSON instruction for Azure backend.")
-                 json_instruction = "\n\nYou MUST respond ONLY with valid JSON."
-                 # Find system prompt or last user message to append instruction
-                 found_target = False
-                 for msg in reversed(backend_messages): # Check system first, then last user
-                     if msg.get('role') == 'system':
-                         msg['content'] = str(msg.get('content', '')) + json_instruction
-                         found_target = True
-                         break
-                 if not found_target:
-                      for msg in reversed(backend_messages):
-                          if msg.get('role') == 'user':
-                              if isinstance(msg.get('content'), str):
-                                   msg['content'] += json_instruction
-                              elif isinstance(msg.get('content'), list):
-                                   # Add as a new text part
-                                   msg['content'].append({"type": "text", "text": json_instruction})
-                              found_target = True
-                              break
-                 if not found_target: # No system or user message? Append a new user message.
-                      logger.warning("No system or user message found to append JSON instruction. Adding new user message.")
-                      backend_messages.append({'role': 'user', 'content': json_instruction})
-
         # Custom 'files_to_update' mode
         elif response_format == "files_to_update":
              logger.info("ℹ️ Custom JSON mode requested ('files_to_update').")
@@ -146,34 +121,9 @@ async def chat_completions(
                  if "1.5-pro" not in llm_client.model_name:
                      logger.warning(f"⚠️ Gemini model {llm_client.model_name} might not fully support JSON mode with schema. Use 1.5-pro.")
                  # Pass the Pydantic model class as the schema for Gemini
+                 generation_config_dict = {}
                  generation_config_dict['response_mime_type'] = 'application/json'
                  generation_config_dict['response_schema'] = Response # Pass the class
-             elif is_azure:
-                 # Azure needs prompt injection with the specific schema structure
-                 logger.info("Injecting 'files_to_update' JSON structure instruction for Azure backend.")
-                 files_instruction = f"\n\nPlease format your response ONLY as a valid JSON object matching this Pydantic schema:\n```json\n{json.dumps(Response.model_json_schema(), indent=2)}\n```"
-                 # Find system prompt or last user message to append instruction
-                 found_target = False
-                 for msg in reversed(backend_messages): # Check system first, then last user
-                     if msg.get('role') == 'system':
-                         msg['content'] = str(msg.get('content', '')) + files_instruction
-                         found_target = True
-                         break
-                 if not found_target:
-                      for msg in reversed(backend_messages):
-                          if msg.get('role') == 'user':
-                              if isinstance(msg.get('content'), str):
-                                   msg['content'] += files_instruction
-                              elif isinstance(msg.get('content'), list):
-                                   msg['content'].append({"type": "text", "text": files_instruction})
-                              found_target = True
-                              break
-                 if not found_target:
-                      logger.warning("No system or user message found to append files_to_update instruction. Adding new user message.")
-                      backend_messages.append({'role': 'user', 'content': files_instruction})
-
-
-        # --- End Build Generation Config Dictionary ---
 
         # --- Call appropriate service function ---
         if should_stream:

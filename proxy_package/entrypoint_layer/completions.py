@@ -113,12 +113,6 @@ async def completions(
                      logger.warning(f"⚠️ Gemini model {llm_client.model_name} might not fully support JSON mode with schema. Use 1.5-pro.")
                  generation_config_dict['response_mime_type'] = 'application/json'
                  generation_config_dict['response_schema'] = Response
-             elif is_azure:
-                 logger.info("Injecting 'files_to_update' JSON structure instruction for Azure backend (completion).")
-                 # Append instruction to the *single* user message content
-                 files_instruction = f"\n\nPlease format your response ONLY as a valid JSON object matching this Pydantic schema:\n```json\n{json.dumps(Response.model_json_schema(), indent=2)}\n```"
-                 backend_messages[0]['content'] += files_instruction # Append to existing content
-
         # --- End Build Generation Config Dictionary ---
 
         # --- Call appropriate service function ---
