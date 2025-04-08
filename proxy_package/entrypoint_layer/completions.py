@@ -14,7 +14,8 @@ from ..service_layer.formating import format_openai_to_gemini # Keep formatters
 from ..service_layer.streaming_request import stream_gemini_response
 from ..service_layer.non_streaming_request import handle_non_streaming_request
 from ..config import GEMINI_MODEL_NAME # Import default model name from config
-from ..context import gemini_llm # Import the initialized LLM client
+from proxy_package.reporitory_layer.llm.llm_factory import _llm # Import the initialized LLM client
+
 completions_router = APIRouter()
 
 @completions_router.post("/v1/completions")
@@ -63,8 +64,8 @@ async def completions(request: Request):
         parse_to_files = False
         if response_format == "files_to_update":
              logger.info("ℹ️ Applying JSON mode for /v1/completions based on 'response_format'.")
-             if "1.5-pro" not in gemini_llm.model_name: # Check the model used by the client
-                 logger.warning(f"⚠️ Warning: Model {gemini_llm.model_name} might not fully support JSON mode. Using gemini-1.5-pro-latest is recommended.")
+             if "1.5-pro" not in _llm.model_name: # Check the model used by the client
+                 logger.warning(f"⚠️ Warning: Model {_llm.model_name} might not fully support JSON mode. Using gemini-1.5-pro-latest is recommended.")
              config_args['response_mime_type'] = 'application/json'
              parse_to_files = True
         # --- End Build Gemini Generation Config Dictionary ---

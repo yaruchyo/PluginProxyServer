@@ -9,7 +9,7 @@ from .utils.logger import logger
 # --- Import configuration and context (which initializes LLM) ---
 # These imports should happen early and should not depend on entrypoints/services yet.
 from .config import GEMINI_MODEL_NAME # Import only what's needed directly here, if anything
-from .context import gemini_llm # Import the initialized LLM client
+from proxy_package.reporitory_layer.llm.llm_factory import _llm # Import the initialized LLM client
 
 # --- Import Routers (Now safe to import as config/context are loaded) ---
 from .entrypoint_layer.chat import chat_router

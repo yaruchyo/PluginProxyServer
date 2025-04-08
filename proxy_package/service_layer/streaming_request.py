@@ -10,7 +10,7 @@ from typing import Any, Optional, List, Dict, Union, Iterator
 # Use relative imports
 from ..utils.logger import logger
 from ..domain_layer.file_responce import Response
-from ..context import gemini_llm # Import initialized LLM client from context
+from proxy_package.reporitory_layer.llm.llm_factory import _llm # Import initialized LLM client from context
 from ..config import GEMINI_MODEL_NAME # Import configured model name for fingerprint
 
 from google.generativeai.types import generation_types # Keep Gemini types
@@ -26,7 +26,7 @@ async def stream_gemini_response(gemini_messages: List[Dict[str, Any]], generati
         """Runs the blocking stream iteration in a separate thread."""
         try:
             # Get the stream iterator from the GeminiLLM class
-            stream = gemini_llm.generate_content_streaming(
+            stream = _llm.generate_content_streaming(
                 contents=gemini_messages,
                 generation_config_dict=generation_config_dict
             )

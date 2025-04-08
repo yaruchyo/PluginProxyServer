@@ -17,7 +17,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
 from proxy_package.utils.logger import logger
 from proxy_package.service_layer.formating import format_openai_to_gemini, format_gemini_to_openai_completion, format_gemini_to_openai_chat
-from proxy_package import  GEMINI_MODEL_NAME, gemini_llm
+from proxy_package import  GEMINI_MODEL_NAME, _llm
 from proxy_package.service_layer.non_streaming_request import handle_non_streaming_request
 from proxy_package.service_layer.streaming_request import stream_gemini_response
 chat_router = APIRouter()
@@ -68,8 +68,8 @@ async def chat_completions(request: Request):
         parse_to_files = False
         if response_format_type == "json_object" or response_format_type == "files_to_update":
              logger.info("ℹ️ Applying JSON mode for /v1/chat/completions.")
-             if "1.5-pro" not in gemini_llm.model_name: # Check the model used by the client
-                 logger.warning(f"⚠️ Warning: Model {gemini_llm.model_name} might not fully support JSON mode. Using gemini-1.5-pro-latest is recommended.")
+             if "1.5-pro" not in _llm.model_name: # Check the model used by the client
+                 logger.warning(f"⚠️ Warning: Model {_llm.model_name} might not fully support JSON mode. Using gemini-1.5-pro-latest is recommended.")
              config_args['response_mime_type'] = 'application/json'
              if response_format_type == "files_to_update":
                  # Pass the schema *if* the underlying API supports it directly in config

@@ -14,6 +14,7 @@ else:
 # --- Read Configuration ---
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 GEMINI_MODEL_NAME = os.environ.get("GOOGLE_MODEL", 'gemini-1.5-pro-latest')
+LLM_MODEL = os.environ.get("LLM_MODEL", 'gemini')
 
 # --- Log loaded configuration (optional, avoid logging API keys directly in production) ---
 logger.info(f"🔧 Configuration Loaded:")

@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types # Import types
 from google.generativeai.types import generation_types
 from typing import Any, Optional, List, Dict, Union, Iterator
-
+from proxy_package.domain_layer.file_responce import Response
 class GeminiLLM:
     """Encapsulates Google Gemini API interactions."""
     def __init__(self, api_key: str, model_name: str):
@@ -39,11 +39,17 @@ class GeminiLLM:
         if not generation_config_dict:
             return None # Return None if no config is provided
         try:
-            # Filter out None values before creating the config object
-            filtered_config_dict = {k: v for k, v in generation_config_dict.items() if v is not None}
-            if not filtered_config_dict:
-                 return None # Return None if dict becomes empty after filtering
-            return types.GenerateContentConfig(**filtered_config_dict)
+            if generation_config_dict.get("response_schema"):
+                generation_config = {
+                    'response_mime_type': 'application/json',
+                    'response_schema': generation_config_dict['response_schema'],  # Still useful to guide the model (now includes portions)
+                }
+                return generation_config
+            else:
+                filtered_config_dict = {k: v for k, v in generation_config_dict.items() if v is not None}
+                if not filtered_config_dict:
+                     return None # Return None if dict becomes empty after filtering
+                return types.GenerateContentConfig(**filtered_config_dict)
         except Exception as e:
             logger.warning(f"⚠️ Could not create GenerateContentConfig from dict: {generation_config_dict}. Error: {e}")
             # Decide how to handle: return None, raise error, or return default? Returning None for now.

@@ -18,7 +18,7 @@ from google.generativeai.types import generation_types
 
 # Use relative imports
 from ..utils.logger import logger
-from ..context import gemini_llm # Import initialized LLM client from context
+from proxy_package.reporitory_layer.llm.llm_factory import _llm # Import initialized LLM client from context
 from .formating import format_gemini_to_openai_chat, format_gemini_to_openai_completion # Import formatters
 
 async def handle_non_streaming_request(gemini_messages: List[Dict[str, Any]], generation_config_dict: Dict[str, Any], requested_model: str, request_id: str, is_chat_format: bool = True):
@@ -28,7 +28,7 @@ async def handle_non_streaming_request(gemini_messages: List[Dict[str, Any]], ge
         # Use run_in_executor as the underlying generate_content might be blocking
         gemini_response = await loop.run_in_executor(
             None,
-            lambda: gemini_llm.generate_content(
+            lambda: _llm.generate_content(
                 contents=gemini_messages,
                 generation_config_dict=generation_config_dict
             )

@@ -1,5 +1,5 @@
 # --- Import logger from the utility module using relative path ---
-from plugin_proxy_server.utils.logger import logger
+from proxy_package.utils.logger import logger
 from openai import AzureOpenAI, APIError, AuthenticationError # Import AzureOpenAI and relevant errors
 from openai.types.chat import ChatCompletion, ChatCompletionChunk # Import response types
 from typing import Any, Optional, List, Dict, Union, Iterator
