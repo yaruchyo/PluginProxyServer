@@ -8,18 +8,18 @@ import time
 import threading
 import uuid
 import asyncio
-from plugin_proxy_server.domain_layer.file_responce import Response
+from proxy_package.domain_layer.file_responce import Response
 from google.generativeai.types import generation_types
 from dotenv import load_dotenv
 import traceback
 import uvicorn
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
-from plugin_proxy_server.utils.logger import logger
-from plugin_proxy_server.service_layer.formating import format_openai_to_gemini, format_gemini_to_openai_completion, format_gemini_to_openai_chat
-from plugin_proxy_server import  GEMINI_MODEL_NAME, gemini_llm
-from plugin_proxy_server.service_layer.non_streaming_request import handle_non_streaming_request
-from plugin_proxy_server.service_layer.streaming_request import stream_gemini_response
+from proxy_package.utils.logger import logger
+from proxy_package.service_layer.formating import format_openai_to_gemini, format_gemini_to_openai_completion, format_gemini_to_openai_chat
+from proxy_package import  GEMINI_MODEL_NAME, gemini_llm
+from proxy_package.service_layer.non_streaming_request import handle_non_streaming_request
+from proxy_package.service_layer.streaming_request import stream_gemini_response
 chat_router = APIRouter()
 
 @chat_router.post("/v1/chat/completions")

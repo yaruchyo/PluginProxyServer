@@ -8,7 +8,7 @@ import time
 import threading
 import uuid
 import asyncio
-from plugin_proxy_server.domain_layer.file_responce import Response
+from proxy_package.domain_layer.file_responce import Response
 from google.generativeai.types import generation_types
 from dotenv import load_dotenv
 import traceback

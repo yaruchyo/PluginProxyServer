@@ -1,0 +1,79 @@
+{
+  "models": [
+    {
+      "title": "Gemini 2.5",
+      "model": "gemini-2.5-pro-exp-03-25",
+      "contextLength": 1000000,
+      "apiKey": "key",
+
+      "provider": "gemini",
+      "completionOptions":{
+        "maxTokens": 80000,
+        "temperature": 1.0
+      },
+      "capabilities": {
+        "uploadImage": true,
+        "tools": true
+      }
+    },
+     {
+      "title": "LM Studio",
+       "provider": "lmstudio",
+       "model": "llama38b",
+     },
+    {
+      "title": "Gemini (Local Proxy)",
+      "provider": "openai",
+      "model": "gemini-proxy-local",
+      "apiBase": "http://127.0.0.1:1234/v1",
+      "apiKey": "not_needed",
+      "contextLength": 1000000,
+      "completionOptions":{
+        "stream": false,
+        "maxTokens": 80000,
+        "temperature": 0.2
+      },
+      "capabilities": {
+        "uploadImage": true,
+        "tools": true
+      }
+    }
+
+  ],
+  "slashCommands": [
+    {
+      "name": "share",
+      "description": "Export this session as markdown"
+    },
+    {
+      "name": "testing",
+      "description": "Export this session as markdown"
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "open",
+      "params": {}
+    },
+    {
+      "name": "code",
+      "params": {}
+    },
+    {
+      "name": "docs",
+      "params": {}
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Tab Autocomplete",
+    "provider": "free-trial",
+    "model": "codestral-latest"
+  },
+  "embeddingsProvider": {
+    "provider": "free-trial"
+  },
+  "reranker": {
+    "name": "free-trial"
+  },
+  "docs": []
+}

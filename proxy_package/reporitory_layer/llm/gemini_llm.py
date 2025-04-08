@@ -1,5 +1,5 @@
 # --- Import logger from the utility module using relative path ---
-from plugin_proxy_server.utils.logger import logger
+from proxy_package.utils.logger import logger
 from google import genai
 from google.genai import types # Import types
 from google.generativeai.types import generation_types

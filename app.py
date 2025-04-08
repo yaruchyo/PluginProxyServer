@@ -11,8 +11,8 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from plugin_proxy_server.utils.logger import logger
-from plugin_proxy_server import app # Import the app instance
+from proxy_package.utils.logger import logger
+from proxy_package import app # Import the app instance
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
 from dotenv import load_dotenv
@@ -35,7 +35,7 @@ def start() -> None:
     logger.info(f"Reloading enabled: {reload}")
 
     uvicorn.run(
-        app="fast_api_proxy:app",
+        app="app:app",
         host=host,
         port=port,
         reload=reload,

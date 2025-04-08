@@ -8,15 +8,15 @@ import time
 import threading
 import uuid
 import asyncio
-from plugin_proxy_server.domain_layer.file_responce import Response
+from proxy_package.domain_layer.file_responce import Response
 from google.generativeai.types import generation_types
 from dotenv import load_dotenv
 import traceback
 import uvicorn
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
-from plugin_proxy_server.utils.logger import logger
-from plugin_proxy_server import GEMINI_MODEL_NAME
+from proxy_package.utils.logger import logger
+from proxy_package import GEMINI_MODEL_NAME
 
 def format_openai_to_gemini(openai_messages):
     """Converts OpenAI message format to Gemini format."""

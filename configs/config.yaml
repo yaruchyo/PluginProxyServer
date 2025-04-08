@@ -1,0 +1,43 @@
+name: Gemini 2.0 Flash
+version: 1.0.1
+schema: v2
+models:
+  - name: Gemini 2.5
+    provider: gemini
+    model: gemini-2.5-pro-exp-03-25
+    apiKey: "key"
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 1048576
+      maxTokens: 80000
+    contextLength: 1000000
+
+  - name: Gemini (Local Proxy)
+    provider: openai # Using 'openai' provider type for compatibility with OpenAI-like APIs
+    model:  gemini-2.5-pro-exp-03-25
+    apiBase: http://127.0.0.1:1234/v1
+    apiKey: not_needed
+    contextLength: 1048576
+    defaultCompletionOptions:
+      contextLength: 1048576
+      maxTokens: 80000
+      temperature: 0.0
+
+
+    capabilities:
+      - tool_use
+      - image_input
+    roles:
+      - chat
+      - edit
+      - autocomplete
+
+
+context:
+  - provider: currentFile
+  - provider: open
+    params:
+      onlyPinned: true
