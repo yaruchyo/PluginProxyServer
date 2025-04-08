@@ -4,7 +4,9 @@ from google import genai
 from google.genai import types # Import types
 from google.generativeai.types import generation_types
 from typing import Any, Optional, List, Dict, Union, Iterator
-from proxy_package.domain_layer.file_responce import Response
+# Removed Response import as it's domain layer, not directly used here
+# from ...domain_layer.file_responce import Response # Use relative import
+
 class GeminiLLM:
     """Encapsulates Google Gemini API interactions."""
     def __init__(self, api_key: str, model_name: str):
@@ -16,10 +18,10 @@ class GeminiLLM:
             model_name: The name of the Gemini model to use (e.g., 'gemini-1.5-pro-latest').
         """
         if not api_key:
-            logger.error("❌ Error: GOOGLE_API_KEY environment variable not set.")
+            logger.error("❌ Error: GOOGLE_API_KEY is required for GeminiLLM.")
             raise ValueError("GOOGLE_API_KEY is required.")
         if not model_name:
-            logger.error("❌ Error: GOOGLE_MODEL environment variable not set.")
+            logger.error("❌ Error: GOOGLE_MODEL name is required for GeminiLLM.")
             raise ValueError("GOOGLE_MODEL is required.")
 
         self.model_name = model_name
@@ -27,6 +29,7 @@ class GeminiLLM:
 
         try:
             # Configure the client
+            # TODO: Add support for multiple API keys if needed (round-robin, etc.)
             self.client = genai.Client(api_key=api_key)
             logger.info(f"✅ Configured Google Generative AI client with model: {self.model_name}")
         except Exception as e:
@@ -37,21 +40,50 @@ class GeminiLLM:
     def _create_config(self, generation_config_dict: Optional[Dict[str, Any]] = None) -> Optional[types.GenerateContentConfig]:
         """Creates a GenerateContentConfig object from a dictionary."""
         if not generation_config_dict:
-            return None # Return None if no config is provided
+            return None
+
+        gemini_config_params = {}
+        # Map common OpenAI params to Gemini params
+        if generation_config_dict.get('max_tokens') is not None: # Map from OpenAI's standard key
+            gemini_config_params['max_output_tokens'] = generation_config_dict['max_tokens']
+        elif generation_config_dict.get('max_output_tokens') is not None: # Or use Gemini's key directly
+            gemini_config_params['max_output_tokens'] = generation_config_dict['max_output_tokens']
+
+        if generation_config_dict.get('temperature') is not None:
+            gemini_config_params['temperature'] = generation_config_dict['temperature']
+        if generation_config_dict.get('top_p') is not None:
+            gemini_config_params['top_p'] = generation_config_dict['top_p']
+        # Gemini uses 'stop_sequences'
+        stop_val = generation_config_dict.get('stop') or generation_config_dict.get('stop_sequences')
+        if stop_val:
+            if isinstance(stop_val, str):
+                gemini_config_params['stop_sequences'] = [stop_val]
+            elif isinstance(stop_val, list):
+                gemini_config_params['stop_sequences'] = stop_val
+
+        # Handle JSON mode (mime type and schema)
+        if generation_config_dict.get('response_mime_type'):
+             gemini_config_params['response_mime_type'] = generation_config_dict['response_mime_type']
+        if generation_config_dict.get('response_schema'):
+             # Note: Gemini expects the Pydantic model class itself, not an instance
+             gemini_config_params['response_schema'] = generation_config_dict['response_schema']
+             # Ensure mime type is set if schema is used
+             if 'response_mime_type' not in gemini_config_params:
+                 gemini_config_params['response_mime_type'] = 'application/json'
+
+
+        # Filter out None values before creating the config object
+        filtered_config_dict = {k: v for k, v in gemini_config_params.items() if v is not None}
+
+        if not filtered_config_dict:
+            return None # Return None if dict becomes empty
+
         try:
-            if generation_config_dict.get("response_schema"):
-                generation_config = {
-                    'response_mime_type': 'application/json',
-                    'response_schema': generation_config_dict['response_schema'],  # Still useful to guide the model (now includes portions)
-                }
-                return generation_config
-            else:
-                filtered_config_dict = {k: v for k, v in generation_config_dict.items() if v is not None}
-                if not filtered_config_dict:
-                     return None # Return None if dict becomes empty after filtering
-                return types.GenerateContentConfig(**filtered_config_dict)
+            # logger.debug(f"Creating Gemini config with: {filtered_config_dict}") # Optional debug
+            # Use ** to unpack the dictionary into keyword arguments
+            return types.GenerateContentConfig(**filtered_config_dict)
         except Exception as e:
-            logger.warning(f"⚠️ Could not create GenerateContentConfig from dict: {generation_config_dict}. Error: {e}")
+            logger.warning(f"⚠️ Could not create GenerateContentConfig from dict: {filtered_config_dict}. Error: {e}")
             # Decide how to handle: return None, raise error, or return default? Returning None for now.
             return None
 

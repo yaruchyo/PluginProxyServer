@@ -1,5 +1,5 @@
 # --- Import logger from the utility module using relative path ---
-from proxy_package.utils.logger import logger
+from ...utils.logger import logger # Use relative import
 from openai import AzureOpenAI, APIError, AuthenticationError # Import AzureOpenAI and relevant errors
 from openai.types.chat import ChatCompletion, ChatCompletionChunk # Import response types
 from typing import Any, Optional, List, Dict, Union, Iterator
@@ -19,16 +19,16 @@ class AzureLLM:
             max_retries: Maximum number of retries for API calls.
         """
         if not api_key:
-            logger.error("❌ Error: AZURE_OPENAI_KEY is required.")
+            logger.error("❌ Error: AZURE_OPENAI_KEY is required for AzureLLM.")
             raise ValueError("AZURE_OPENAI_KEY is required.")
         if not api_version:
-            logger.error("❌ Error: AZURE_OPENAI_API_VERSION is required.")
+            logger.error("❌ Error: AZURE_OPENAI_API_VERSION is required for AzureLLM.")
             raise ValueError("AZURE_OPENAI_API_VERSION is required.")
         if not endpoint:
-            logger.error("❌ Error: AZURE_OPENAI_ENDPOINT is required.")
+            logger.error("❌ Error: AZURE_OPENAI_ENDPOINT is required for AzureLLM.")
             raise ValueError("AZURE_OPENAI_ENDPOINT is required.")
         if not deployment_name:
-            logger.error("❌ Error: AZURE_OPENAI_DEPLOYMENT_NAME is required.")
+            logger.error("❌ Error: AZURE_OPENAI_DEPLOYMENT_NAME (model) is required for AzureLLM.")
             raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME is required.")
 
         self.deployment_name = deployment_name
@@ -55,17 +55,37 @@ class AzureLLM:
         """Prepares the parameter dictionary for the Azure API call."""
         if not generation_config_dict:
             return {}
-        # Filter out None values and potentially map keys if needed in the future
-        # Note: Entrypoint layer already maps keys like max_tokens, temperature etc.
-        filtered_params = {k: v for k, v in generation_config_dict.items() if v is not None}
-        # Remove keys not directly supported by Azure chat completions create if necessary
-        # Example: 'response_mime_type', 'response_schema' are Gemini specific
-        filtered_params.pop('response_mime_type', None)
-        filtered_params.pop('response_schema', None)
-        # Azure uses 'stop' instead of 'stop_sequences'
-        if 'stop_sequences' in filtered_params:
-            filtered_params['stop'] = filtered_params.pop('stop_sequences')
 
+        azure_params = {}
+        # Map common OpenAI params to Azure params
+        if generation_config_dict.get('max_output_tokens') is not None: # Map from Gemini's potential key
+            azure_params['max_tokens'] = generation_config_dict['max_output_tokens']
+        elif generation_config_dict.get('max_tokens') is not None: # Or use OpenAI's standard key
+            azure_params['max_tokens'] = 16384
+
+        if generation_config_dict.get('temperature') is not None:
+            azure_params['temperature'] = generation_config_dict['temperature']
+        if generation_config_dict.get('top_p') is not None:
+            azure_params['top_p'] = generation_config_dict['top_p']
+        if generation_config_dict.get('presence_penalty') is not None:
+             azure_params['presence_penalty'] = generation_config_dict['presence_penalty']
+        if generation_config_dict.get('frequency_penalty') is not None:
+             azure_params['frequency_penalty'] = generation_config_dict['frequency_penalty']
+        if generation_config_dict.get('logit_bias') is not None:
+             azure_params['logit_bias'] = generation_config_dict['logit_bias']
+        if generation_config_dict.get('user') is not None:
+             azure_params['user'] = generation_config_dict['user']
+
+        # Handle stop sequences (Gemini uses 'stop_sequences', OpenAI/Azure use 'stop')
+        stop_val = generation_config_dict.get('stop_sequences') or generation_config_dict.get('stop')
+        if stop_val:
+            if isinstance(stop_val, str) or isinstance(stop_val, list):
+                azure_params['stop'] = stop_val
+            else:
+                 logger.warning(f"⚠️ Invalid type for 'stop' parameter: {type(stop_val)}. Ignoring.")
+
+        # Filter out None values before returning
+        filtered_params = {k: v for k, v in azure_params.items() if v is not None}
         # logger.debug(f"Prepared Azure params: {filtered_params}") # Optional debug
         return filtered_params
 
@@ -74,7 +94,7 @@ class AzureLLM:
         Generates content using the Azure OpenAI API (non-streaming).
 
         Args:
-            contents: The list of messages in OpenAI format.
+            contents: The list of messages in standard OpenAI format.
             generation_config_dict: A dictionary containing generation parameters
                                      (e.g., max_tokens, temperature, stop).
 
@@ -99,7 +119,7 @@ class AzureLLM:
             # logger.debug(f"Azure Raw Response (Non-Streaming):\n{response.model_dump_json(indent=2)}") # Optional detailed logging
             return response
         except (APIError, AuthenticationError) as e:
-             logger.error(f"❌ Azure API Error (Non-Streaming): {type(e).__name__} - {e}")
+             logger.error(f"❌ Azure API Error (Non-Streaming): {type(e).__name__} - Status={getattr(e, 'status_code', 'N/A')} Body={getattr(e, 'body', 'N/A')}")
              traceback.print_exc() # Log full traceback for API errors
              raise # Re-raise specific Azure exceptions
         except Exception as e:
@@ -112,7 +132,7 @@ class AzureLLM:
         Generates content using the Azure OpenAI API (streaming).
 
         Args:
-            contents: The list of messages in OpenAI format.
+            contents: The list of messages in standard OpenAI format.
             generation_config_dict: A dictionary containing generation parameters.
 
         Returns:
@@ -133,6 +153,10 @@ class AzureLLM:
             )
             logger.success("✅ Azure Stream initiated.")
             return stream
+        except (APIError, AuthenticationError) as e: # Catch errors during initiation
+             logger.error(f"❌ Azure API Error (Streaming Init): {type(e).__name__} - Status={getattr(e, 'status_code', 'N/A')} Body={getattr(e, 'body', 'N/A')}")
+             traceback.print_exc()
+             raise # Re-raise specific Azure exceptions
         except Exception as e:
             logger.error(f"❌ Error initiating Azure streaming call: {e}")
             logger.exception(e)

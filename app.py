@@ -1,46 +1,46 @@
 import os
-import time
-import uuid
-import asyncio
-import json
-import traceback
-import threading # Keep if needed elsewhere, not directly used here
-
-# --- Third-party Imports ---
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from proxy_package.utils.logger import logger
-from proxy_package import app # Import the app instance
-from pydantic import BaseModel, TypeAdapter, ValidationError
-from typing import Any, Optional, List, Dict, Union, Iterator
 from dotenv import load_dotenv
-# --- Load environment variables ---
-load_dotenv() # This should ideally be done once, potentially in __init__.py or here if running this file directly
+
+# --- Load environment variables early ---
+# This ensures config is loaded before proxy_package is imported
+load_dotenv()
+
+# --- Import logger and the app instance ---
+# Logger setup should happen within the package now
+from proxy_package.utils.logger import logger
+from proxy_package import app # Import the app instance from __init__.py
 
 # --- Server Start Function ---
 def start() -> None:
-    logger.info("Starting FastAPI proxy...")
-    workers = int(os.environ.get("WEB_CONCURRENCY", 1))
-    host = os.environ.get("HOST", "localhost")
+    # Configuration reading is now handled within the package's config.py
+    # We just read host/port/workers/reload for uvicorn itself
+    host = os.environ.get("HOST", "127.0.0.1") # Default to 127.0.0.1 for broader compatibility
     port = int(os.environ.get("PORT", 1234))
     reload = os.environ.get("RELOAD", "true").lower() == "true"
+    workers = int(os.environ.get("WEB_CONCURRENCY", 1))
+
+    # Log level for uvicorn can be set if needed, but loguru handles app logs
+    log_level = os.environ.get("LOG_LEVEL", "info").lower()
 
     if workers > 1 and reload:
         logger.warning("⚠️ WARNING: Running multiple workers with reload=True is not recommended. Setting workers to 1.")
         workers = 1
 
-    logger.info(f"Starting Uvicorn server on {host}:{port} with {workers} worker(s)")
-    logger.info(f"Reloading enabled: {reload}")
+    logger.info(f"Starting Uvicorn server on {host}:{port}")
+    logger.info(f"Workers: {workers}, Reload: {reload}, Log Level: {log_level}")
+    logger.info(f"Proxy Backend configured via LLM_BACKEND env var.") # Reminder
 
     uvicorn.run(
-        app="app:app",
+        # Use the imported app instance directly
+        app="proxy_package:app", # Point to the app object within the package
         host=host,
         port=port,
         reload=reload,
-        log_config=None, # Use loguru
         workers=workers,
+        log_level=log_level,
+        # Let loguru handle application logging format
+        log_config=None, # Disable uvicorn's default logging config if using loguru intercept
     )
 
 if __name__ == "__main__":

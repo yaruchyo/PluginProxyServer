@@ -6,17 +6,17 @@ from typing import Any, Optional, List, Dict, Union, Iterator # Keep necessary t
 # --- Import logger first ---
 from .utils.logger import logger
 
-# --- Import configuration and context (which initializes LLM) ---
-# These imports should happen early and should not depend on entrypoints/services yet.
-from .config import GEMINI_MODEL_NAME # Import only what's needed directly here, if anything
-from proxy_package.reporitory_layer.llm.llm_factory import _llm # Import the initialized LLM client
+# --- Import configuration and initialize LLM Factory ---
+# This import triggers the LLM client initialization based on .env
+from .config import LLM_BACKEND, DEFAULT_MODEL_NAME
+from .reporitory_layer.llm import llm_factory # Import the module to ensure initialization
 
 # --- Import Routers (Now safe to import as config/context are loaded) ---
 from .entrypoint_layer.chat import chat_router
-from .entrypoint_layer.completions import completions_router # Corrected name
+from .entrypoint_layer.completions import completions_router
 
 # --- Create FastAPI app ---
-app = FastAPI(title="Gemini OpenAI-Compatible Proxy")
+app = FastAPI(title=f"OpenAI-Compatible Proxy ({LLM_BACKEND.upper()} Backend)")
 
 # --- Include routers ---
 app.include_router(chat_router)
@@ -25,18 +25,32 @@ app.include_router(completions_router)
 # --- Add CORS middleware ---
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins for development, restrict in production
-    allow_origins=["*"],
+    allow_origins=["*"], # Restrict in production
     allow_credentials=True,
-    allow_methods=["*"], # Allow all standard methods
-    allow_headers=["*"], # Allow all standard headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Optional: Assign logger/context to app state if needed by middleware/dependencies later
-# app.state.logger = logger
-# app.state.gemini_llm = gemini_llm # Can be useful for dependency injection
+# Optional: Add a root endpoint for health check / info
+@app.get("/")
+async def read_root():
+    # Access the initialized client via the getter for status check
+    llm_status = "Unavailable"
+    try:
+        client = llm_factory.get_llm_client()
+        llm_status = f"Available ({type(client).__name__})"
+    except Exception as e:
+        llm_status = f"Error ({e})"
 
-logger.info("✅ FastAPI application configured successfully.")
+    return {
+        "message": f"OpenAI-Compatible Proxy is running.",
+        "llm_backend": LLM_BACKEND.upper(),
+        "default_model": DEFAULT_MODEL_NAME,
+        "llm_client_status": llm_status,
+    }
 
-# --- Expose core components if needed for external use (less common for __init__) ---
-# __all__ = ["app", "gemini_llm", "logger", "GEMINI_MODEL_NAME"]
+
+logger.info(f"✅ FastAPI application configured successfully for {LLM_BACKEND.upper()} backend.")
+
+# --- Expose core components if needed (less common for __init__) ---
+# __all__ = ["app", "logger", "LLM_BACKEND", "DEFAULT_MODEL_NAME"]
