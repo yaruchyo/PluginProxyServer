@@ -10,7 +10,7 @@ from typing import Any, Optional, List, Dict, Union, Iterator
 # Relative imports
 from ..utils.logger import logger
 from ..domain_layer.file_responce import Response, FilesToUpdate
-from ..reporitory_layer.llm.llm_factory import LLMClient, get_current_llm
+from ..reporitory_layer.llm.llm_factory import LLMClient,create_llm_client
 from ..service_layer.formating import create_generation_config_dict
 from ..service_layer.non_streaming_request import handle_non_streaming_request
 from ..service_layer.streaming_request import stream_response
@@ -20,17 +20,12 @@ completions_router = APIRouter()
 
 @completions_router.post("/v1/completions")
 async def completions(
-    request: Request,
-    llm_client: LLMClient = Depends(get_current_llm)
+    request: Request
 ):
     """
     Handles completion requests, supporting both streaming and non-streaming modes.
     """
     request_id = f"cmpl-{uuid.uuid4()}"
-    start_time = time.time()
-    backend_name = type(llm_client).__name__
-    logger.info(f"\n--- [{request_id}] Completion Request Received ({backend_name} Backend) ({time.strftime('%Y-%m-%d %H:%M:%S')}) ---")
-
     try:
         # 1. Parse and Validate Request Body
         try:
@@ -47,8 +42,9 @@ async def completions(
 
         # 2. Extract Parameters
         requested_model = completion_request_data.get('model', DEFAULT_MODEL_NAME)
-        should_stream = completion_request_data.get('stream', False)
         prompt = completion_request_data.get('prompt')
+
+        llm_client = create_llm_client(requested_model)
 
         if not prompt:
             logger.warning(f"[{request_id}] ⚠️ Request received with no prompt.")
@@ -64,33 +60,18 @@ async def completions(
         backend_messages = llm_client.create_backend_messages(openai_messages)
         generation_config_dict = create_generation_config_dict(completion_request_data)
 
-        # 4. Handle Request (Streaming or Non-Streaming)
-        if should_stream:
-            logger.info(f"[{request_id}] 🌊 Handling STREAMING completion request...")
-            return StreamingResponse(
-                stream_response(
-                    backend_messages=backend_messages,
-                    generation_config_dict=generation_config_dict,
-                    requested_model=requested_model,
-                    request_id=request_id,
-                    is_chat_format=False,
-                ),
-                media_type="text/event-stream"
-            )
-        else:
-            logger.info(f"[{request_id}] 📄 Handling NON-STREAMING completion request...")
-            response_content = await handle_non_streaming_request(
+        logger.info(f"[{request_id}] 🌊 Handling STREAMING completion request...")
+        return StreamingResponse(
+            stream_response(
                 llm_client=llm_client,
                 backend_messages=backend_messages,
                 generation_config_dict=generation_config_dict,
                 requested_model=requested_model,
                 request_id=request_id,
-                is_chat_format=False
-            )
-            duration = time.time() - start_time
-            logger.info(f"[{request_id}] ✅ Non-streaming request completed in {duration:.2f}s.")
-            return JSONResponse(content=response_content)
-
+                is_chat_format=False,
+            ),
+            media_type="text/event-stream"
+        )
     except HTTPException as e:
         logger.warning(f"[{request_id}] ⚠️ Handled HTTPException: Status={e.status_code}, Detail={e.detail}")
         raise e

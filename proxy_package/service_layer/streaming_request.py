@@ -10,11 +10,11 @@ from typing import Any, Optional, List, Dict, Union, Iterator, Tuple, AsyncGener
 # Use relative imports
 from ..utils.logger import logger
 from ..domain_layer.file_responce import Response
-from ..reporitory_layer.llm.llm_factory import LLMClient # Import base class for type hinting
+from ..reporitory_layer.llm.llm_factory import LLMClient # Import base class/union type
 from ..reporitory_layer.llm.gemini_llm import GeminiLLM
 from ..reporitory_layer.llm.azure_llm import AzureLLM
-from ..reporitory_layer.llm.llm_factory import get_llm_client
-from ..config import GEMINI_DEFAULT_MODEL, AZURE_OPENAI_DEPLOYMENT_NAME, LLM_BACKEND
+# from ..reporitory_layer.llm.llm_factory import get_llm_client # REMOVE this import
+from ..config import GEMINI_DEFAULT_MODEL, AZURE_OPENAI_DEPLOYMENT_NAME # Keep for potential defaults/info
 from google.genai.types import GenerateContentResponse
 # Import backend-specific types with aliases
 from google.generativeai.types import generation_types as gemini_generation_types
@@ -30,8 +30,7 @@ SSE_DONE_MESSAGE = f"{SSE_DATA_PREFIX}[DONE]\n\n"
 CHAT_COMPLETION_CHUNK_OBJECT = "chat.completion.chunk"
 TEXT_COMPLETION_OBJECT = "text_completion" # Assuming this is the identifier for non-chat format
 
-# --- Helper Function for Payload Formatting ---
-
+# --- Helper Function for Payload Formatting (Keep as is) ---
 def _format_sse_payload(
     request_id: str,
     model: str,
@@ -41,7 +40,7 @@ def _format_sse_payload(
     finish_reason: Optional[str] = None,
     is_error: bool = False
 ) -> str:
-    """Formats the data payload for Server-Sent Events (SSE)."""
+    # ... (implementation remains the same) ...
     created = int(time.time())
     payload: Dict[str, Any]
 
@@ -55,7 +54,6 @@ def _format_sse_payload(
             "model": model,
             "choices": [choice],
         }
-        # Add system_fingerprint only if available (OpenAI standard)
         if system_fingerprint:
              payload["system_fingerprint"] = system_fingerprint
     else: # Completion format
@@ -70,8 +68,8 @@ def _format_sse_payload(
 
     return f"{SSE_DATA_PREFIX}{json.dumps(payload)}\n\n"
 
-# --- Stream Processor Class ---
 
+# --- Stream Processor Class ---
 class StreamProcessor:
     """
     Manages the process of receiving chunks from an LLM backend in a separate
@@ -79,7 +77,7 @@ class StreamProcessor:
     """
     def __init__(
         self,
-        llm_client: LLMClient,
+        llm_client: LLMClient, # Takes the specific client instance
         backend_messages: List[Dict[str, Any]],
         generation_config_dict: Dict[str, Any],
         requested_model: str,
@@ -87,7 +85,7 @@ class StreamProcessor:
         is_chat_format: bool = True,
         parse_to_files: bool = False
     ):
-        self.llm_client = llm_client
+        self.llm_client = llm_client # Store the passed client
         self.backend_messages = backend_messages
         self.generation_config_dict = generation_config_dict
         self.requested_model = requested_model
@@ -97,37 +95,31 @@ class StreamProcessor:
 
         self.loop = asyncio.get_event_loop()
         self.queue: asyncio.Queue[Optional[BackendStreamItem]] = asyncio.Queue()
-        self.stream_iterator: Optional[Iterator[BackendStreamItem]] = None # To hold the stream object
+        self.stream_iterator: Optional[Iterator[BackendStreamItem]] = None
         self.full_response_text = ""
         self.final_finish_reason: Optional[str] = None
         self.sent_error_chunk = False
+        # Determine backend type from the passed client instance
         self.is_gemini = isinstance(self.llm_client, GeminiLLM)
         self.is_azure = isinstance(self.llm_client, AzureLLM)
-        # Use a method on the client if possible, otherwise construct here
-        self.system_fingerprint = self._get_system_fingerprint()
+        self.system_fingerprint = self._get_system_fingerprint() # Use the instance client
 
-        logger.info(f"[{self.request_id}] Initialized StreamProcessor for {'Gemini' if self.is_gemini else 'Azure' if self.is_azure else 'Unknown'} backend.")
+        logger.info(f"[{self.request_id}] Initialized StreamProcessor for {type(self.llm_client).__name__} backend.")
 
     def _get_system_fingerprint(self) -> Optional[str]:
         """Determines the system fingerprint based on the backend."""
-        # Ideally, this would be a method on the LLMClient interface
+        # Use self.llm_client
         if hasattr(self.llm_client, 'get_system_fingerprint'):
-             # Assuming LLMClient classes implement this
              return self.llm_client.get_system_fingerprint()
         else:
-            # Fallback based on type checking (less ideal)
-            backend_model_name = getattr(self.llm_client, 'model_name', 'unknown-model')
+            backend_model_name = getattr(self.llm_client, 'model_name', 'unknown-model') # Or deployment_name for Azure
             if self.is_gemini:
                 return f"gemini-{backend_model_name}"
             elif self.is_azure:
-                 # Azure OpenAI API generally includes this in the response chunk itself
-                 # We might not need to pre-define it here if we extract it from the chunk later.
-                 # For now, let's return None and rely on the chunk if available.
-                 # return f"azure-{backend_model_name}" # Or return None
-                 return None # Let Azure chunks provide it if they do
+                 # Azure chunks might provide it, return None here initially
+                 return None
             else:
                 return "unknown-backend"
-
 
     def _generator_thread_target(self):
         """
@@ -135,71 +127,65 @@ class StreamProcessor:
         items (chunks or exceptions) onto the asyncio queue.
         """
         try:
+            # Use self.llm_client
             backend_name = type(self.llm_client).__name__
             logger.info(f"[{self.request_id}] Generator thread starting: Initiating stream from {backend_name}...")
+            # Use self.llm_client
             self.stream_iterator = self.llm_client.generate_content_streaming(
                 contents=self.backend_messages,
                 generation_config_dict=self.generation_config_dict
             )
 
             for chunk in self.stream_iterator:
-                # logger.debug(f"[{self.request_id}] Raw chunk received: {chunk}")
                 self.loop.call_soon_threadsafe(self.queue.put_nowait, chunk)
 
-            # Signal the end of the stream
             self.loop.call_soon_threadsafe(self.queue.put_nowait, None)
             logger.info(f"[{self.request_id}] Generator thread finished normally.")
 
+        # --- Exception Handling (remains largely the same, but uses self.llm_client context if needed) ---
         except (gemini_generation_types.BlockedPromptException, gemini_generation_types.StopCandidateException) as gemini_error:
             logger.error(f"[{self.request_id}] ❌ Gemini API Error in generator thread: {type(gemini_error).__name__} - {gemini_error}")
             self.loop.call_soon_threadsafe(self.queue.put_nowait, gemini_error)
-
         except (AzureAPIError, AzureAuthenticationError) as azure_error:
              logger.error(f"[{self.request_id}] ❌ Azure API Error in generator thread: {type(azure_error).__name__} - Status={getattr(azure_error, 'status_code', 'N/A')} Body={getattr(azure_error, 'body', 'N/A')}")
              self.loop.call_soon_threadsafe(self.queue.put_nowait, azure_error)
-
         except Exception as e:
-            logger.error(f"[{self.request_id}] ❌ Unexpected Error in generator thread ({type(self.llm_client).__name__}): {e}")
+            # Use self.llm_client to get backend name
+            backend_name = type(self.llm_client).__name__
+            logger.error(f"[{self.request_id}] ❌ Unexpected Error in generator thread ({backend_name}): {e}")
             logger.exception(e) # Log full traceback
             self.loop.call_soon_threadsafe(self.queue.put_nowait, e)
 
+    # --- _parse_gemini_chunk and _parse_azure_chunk (Keep as is) ---
+    # These are helper methods internal to the processor
     def _parse_gemini_chunk(self, item: gemini_generation_types.GenerateContentResponse) -> Tuple[Optional[str], Optional[str]]:
-        """Parses a Gemini chunk into text content and finish reason."""
+        # ... (implementation remains the same) ...
         chunk_text = None
         chunk_finish_reason = None
         try:
-            # Extract text (handle potential variations in structure)
             if hasattr(item, 'text'):
                 chunk_text = item.text
             elif hasattr(item, 'candidates') and item.candidates:
                 candidate = item.candidates[0]
                 if hasattr(candidate, 'content') and candidate.content and hasattr(candidate.content, 'parts') and candidate.content.parts:
                     chunk_text = "".join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
-
-            # Extract and map finish reason
             if hasattr(item, 'candidates') and item.candidates:
                 candidate = item.candidates[0]
                 if hasattr(candidate, 'finish_reason') and candidate.finish_reason is not None:
                     finish_reason_gemini = candidate.finish_reason
-                    # Use .name for enum, fallback to str()
                     finish_reason_key = finish_reason_gemini.name if hasattr(finish_reason_gemini, 'name') else str(finish_reason_gemini)
-                    # Map Gemini reasons to OpenAI-like reasons
                     finish_reason_map = {
                         'STOP': 'stop', 'MAX_TOKENS': 'length', 'SAFETY': 'content_filter',
-                        'RECITATION': 'recitation', # Or map to 'stop' or 'content_filter' depending on desired behavior
-                        'OTHER': 'unknown', 'UNKNOWN': 'unknown', 'UNSPECIFIED': 'unknown'
+                        'RECITATION': 'recitation', 'OTHER': 'unknown', 'UNKNOWN': 'unknown', 'UNSPECIFIED': 'unknown'
                     }
-                    chunk_finish_reason = finish_reason_map.get(finish_reason_key.upper(), 'unknown') # Use upper for safety
-
+                    chunk_finish_reason = finish_reason_map.get(finish_reason_key.upper(), 'unknown')
         except Exception as e:
             logger.warning(f"[{self.request_id}] ⚠️ Error parsing Gemini chunk: {e}. Chunk: {item}")
-            chunk_text = f"[GEMINI_CHUNK_PARSING_ERROR: {e}]" # Indicate error in content
-            # Don't set finish_reason here, let the stream try to continue or end naturally
-
+            chunk_text = f"[GEMINI_CHUNK_PARSING_ERROR: {e}]"
         return chunk_text, chunk_finish_reason
 
     def _parse_azure_chunk(self, item: AzureChatCompletionChunk) -> Tuple[Optional[str], Optional[str]]:
-        """Parses an Azure chunk into text content and finish reason."""
+        # ... (implementation remains the same) ...
         chunk_text = None
         chunk_finish_reason = None
         try:
@@ -209,164 +195,144 @@ class StreamProcessor:
                     chunk_text = choice.delta.content
                 if choice.finish_reason:
                     chunk_finish_reason = choice.finish_reason
-                # Potentially extract system_fingerprint if needed and not set globally
-                # if hasattr(item, 'system_fingerprint') and item.system_fingerprint:
-                #    self.system_fingerprint = item.system_fingerprint
-
         except Exception as e:
             logger.warning(f"[{self.request_id}] ⚠️ Error parsing Azure chunk: {e}. Chunk: {item}")
             chunk_text = f"[AZURE_CHUNK_PARSING_ERROR: {e}]"
-
         return chunk_text, chunk_finish_reason
 
+
     def _process_chunk(self, item: BackendStreamItem) -> Tuple[Optional[str], Optional[str], bool]:
-        """Processes a valid chunk based on the backend type."""
-        llm_client = get_llm_client()
+        """Processes a valid chunk based on the backend type using polymorphism."""
+        # llm_client = get_llm_client() # REMOVE THIS LINE
         chunk_text: Optional[str] = None
         chunk_finish_reason: Optional[str] = None
-        processing_error = False # Flag for errors *during* parsing
+        processing_error = False
 
         try:
-            chunk_text, chunk_finish_reason = llm_client.parse_chunks(item)
+            # Use self.llm_client and assume it has parse_chunks method
+            # Ensure GeminiLLM and AzureLLM implement parse_chunks(item) -> Tuple[Optional[str], Optional[str]]
+            # If parse_chunks is not implemented polymorphically, revert to isinstance checks here:
+            # if self.is_gemini:
+            #     chunk_text, chunk_finish_reason = self._parse_gemini_chunk(item)
+            # elif self.is_azure:
+            #     chunk_text, chunk_finish_reason = self._parse_azure_chunk(item)
+            # else: ... error ...
+
+            # Assuming polymorphic parse_chunks exists on self.llm_client:
+            chunk_text, chunk_finish_reason = self.llm_client.parse_chunks(item)
+
+        except AttributeError:
+             logger.error(f"[{self.request_id}] ❌ LLM client ({type(self.llm_client).__name__}) does not implement 'parse_chunks' method.")
+             # Fallback to isinstance check if parse_chunks isn't implemented
+             if self.is_gemini and isinstance(item, GenerateContentResponse):
+                 chunk_text, chunk_finish_reason = self._parse_gemini_chunk(item)
+             elif self.is_azure and isinstance(item, AzureChatCompletionChunk):
+                 chunk_text, chunk_finish_reason = self._parse_azure_chunk(item)
+             else:
+                 logger.error(f"[{self.request_id}] ❌ Cannot parse chunk of type {type(item)} for backend {type(self.llm_client).__name__}.")
+                 chunk_text = f"[CHUNK_PARSING_UNSUPPORTED_TYPE: {type(item)}]"
+                 processing_error = True
+
         except Exception as e:
-             # Catch errors during the specific backend parsing logic above
              logger.error(f"[{self.request_id}] ❌ Unexpected error processing chunk content: {e}")
              logger.exception(e)
              chunk_text = f"[CHUNK_PROCESSING_ERROR: {e}]"
              processing_error = True
-             # chunk_finish_reason = "error" # Mark as error?
 
-        # Update the final finish reason if a new one is received
         if chunk_finish_reason:
             self.final_finish_reason = chunk_finish_reason
-
-        # Accumulate text only if it's valid content
         if chunk_text and not processing_error:
             self.full_response_text += chunk_text
 
         return chunk_text, chunk_finish_reason, processing_error
 
+    # --- _process_exception (Keep as is) ---
     def _process_exception(self, item: Exception) -> Tuple[str, str]:
-        """Processes an exception received from the generator thread."""
+        # ... (implementation remains the same) ...
         logger.error(f"[{self.request_id}] ❌ Received exception from generator: {type(item).__name__} - {item}")
         error_type_name = type(item).__name__
         error_detail = str(item)
-        finish_reason = "error" # OpenAI standard finish reason for errors
-
-        # Add specific details for known error types
+        finish_reason = "error"
         if isinstance(item, (AzureAPIError, AzureAuthenticationError)):
             status_code = getattr(item, 'status_code', 500)
             body = getattr(item, 'body', {})
             error_detail = f"Status={status_code}, Detail={error_detail}, Body={body}"
         elif isinstance(item, gemini_generation_types.BlockedPromptException):
             error_detail = "Prompt blocked by safety settings."
-            finish_reason = "content_filter" # More specific reason
+            finish_reason = "content_filter"
         elif isinstance(item, gemini_generation_types.StopCandidateException):
-             # This might indicate an issue but isn't always a fatal error itself.
-             # The finish_reason should come from the candidate if available.
-             # However, if it arrives here as an exception, treat it as an error.
             error_detail = "Generation stopped unexpectedly (check finish reason if available)."
-            finish_reason = "error" # Or potentially map from candidate if possible
-
+            finish_reason = "error"
         error_content = f"[BACKEND_ERROR: {error_type_name} - {error_detail}]"
-        self.sent_error_chunk = True # Mark that we've sent an error
-        self.final_finish_reason = finish_reason # Ensure stream ends with error status
-
+        self.sent_error_chunk = True
+        self.final_finish_reason = finish_reason
         return error_content, finish_reason
 
+
+    # --- _handle_final_parsing (Keep as is) ---
     async def _handle_final_parsing(self):
-        """Handles parsing the full response if needed after the stream ends."""
+        # ... (implementation remains the same) ...
         if not self.sent_error_chunk and self.final_finish_reason != "error" and self.parse_to_files and self.full_response_text:
             logger.info(f"[{self.request_id}] Attempting to parse full response for FilesToUpdate...")
             try:
                 list_files_adapter = TypeAdapter(Response)
-                # Use validate_json which handles potential JSON errors
                 parsed_response = list_files_adapter.validate_json(self.full_response_text)
                 if parsed_response.files_to_update:
                     parsed_count = len(parsed_response.files_to_update)
                     logger.info(f"[{self.request_id}] ✅ Successfully parsed stream into {parsed_count} FilesToUpdate.")
-                    # Optionally yield a custom event here if needed by the client?
-                    # yield f"event: files_parsed\ndata: {json.dumps([f.model_dump() for f in parsed_response.files_to_update])}\n\n"
                 else:
                     logger.info(f"[{self.request_id}] ℹ️ Stream response parsed, but no 'files_to_update' found.")
             except (ValidationError, json.JSONDecodeError) as e:
                 logger.warning(f"[{self.request_id}] ⚠️ Failed to parse full stream response into FilesToUpdate model: {e}")
-                # Do not yield an error chunk here; client-side parsing is separate.
-                # Log is sufficient.
 
+
+    # --- process_stream (Keep as is, relies on internal methods using self.llm_client) ---
     async def process_stream(self) -> AsyncGenerator[str, None]:
-        """
-        Asynchronously processes items from the queue and yields SSE formatted strings.
-        """
-        # Start the generator thread
+        # ... (implementation remains the same, uses self.llm_client implicitly via other methods) ...
         threading.Thread(
             target=self._generator_thread_target,
             daemon=True,
             name=f"StreamGen-{self.request_id}"
         ).start()
-
         try:
             while True:
                 item = await self.queue.get()
-
                 if item is None:
                     logger.info(f"[{self.request_id}] 🏁 Reached end of stream signal (None received).")
-                    break # End of stream
-
+                    break
                 content: Optional[str] = None
                 finish_reason: Optional[str] = None
                 is_error = False
-
-                # --- Handle Exceptions from Queue ---
                 if isinstance(item, Exception):
                     content, finish_reason = self._process_exception(item)
                     is_error = True
-                    # Yield the error chunk immediately
                     yield _format_sse_payload(
                         self.request_id, self.requested_model, self.system_fingerprint,
                         self.is_chat_format, content, finish_reason, is_error=True
                     )
-                    # Continue processing queue until None, but don't process further chunks normally
                     continue
-
-                # --- Process Valid Chunk ---
-                # Skip processing normal chunks if a fatal error was already sent
                 if self.sent_error_chunk:
                     logger.debug(f"[{self.request_id}] Skipping chunk processing after error was sent.")
                     continue
-
                 content, chunk_finish_reason, processing_error = self._process_chunk(item)
-
-                # Only yield if there's content or a finish reason
                 if content or chunk_finish_reason:
                     yield _format_sse_payload(
                         self.request_id, self.requested_model, self.system_fingerprint,
                         self.is_chat_format, content, chunk_finish_reason
                     )
-
-            # --- Stream finished normally (processed None) ---
             await self._handle_final_parsing()
-
-            # Ensure a final chunk with finish_reason is sent *if* the stream ended
-            # without one AND no fatal error occurred.
             if self.final_finish_reason is None and not self.sent_error_chunk:
-                self.final_finish_reason = 'stop' # Assume normal stop
+                self.final_finish_reason = 'stop'
                 logger.warning(f"[{self.request_id}] ⚠️ No finish reason received from backend. Defaulting to 'stop'. Sending final chunk.")
                 yield _format_sse_payload(
                     self.request_id, self.requested_model, self.system_fingerprint,
                     self.is_chat_format, content=None, finish_reason=self.final_finish_reason
                 )
-
         except asyncio.CancelledError:
             logger.info(f"[{self.request_id}] 🚫 Stream cancelled by client.")
-            # TODO: Consider signaling cancellation to the generator thread if possible/necessary.
-            # This might involve setting a flag or using a more complex mechanism if
-            # the underlying SDK supports cancellation. For now, the thread will exit
-            # when the client disconnects and the yield fails.
         except Exception as e:
             logger.error(f"[{self.request_id}] ❌ Unexpected error during stream processing loop: {e}")
             logger.exception(e)
-            # Attempt to yield a final error chunk if not already done
             if not self.sent_error_chunk:
                 error_content = f"[STREAM_PROCESSING_ERROR: {e}]"
                 finish_reason = "error"
@@ -378,14 +344,13 @@ class StreamProcessor:
                 except Exception as yield_err:
                     logger.error(f"[{self.request_id}] ❌ Failed to yield final error chunk after processing error: {yield_err}")
         finally:
-            # Always yield [DONE] for SSE standard compliance
             yield SSE_DONE_MESSAGE
             logger.info(f"[{self.request_id}] ✅ Sent [DONE] message.")
 
 
 # --- Public API Function ---
-
 async def stream_response(
+    llm_client: LLMClient, # Takes the specific client instance
     backend_messages: List[Dict[str, Any]],
     generation_config_dict: Dict[str, Any],
     requested_model: str,
@@ -393,16 +358,16 @@ async def stream_response(
     is_chat_format: bool = True,
     parse_to_files: bool = False
 ) -> AsyncGenerator[str, None]:
-    """~
-    Handles streaming requests using the configured LLM client by delegating
+    """
+    Handles streaming requests using the provided LLM client by delegating
     to the StreamProcessor class.
 
     Yields:
         Server-Sent Event (SSE) formatted strings.
     """
-    llm_client = get_llm_client()
+    # No need to get client here, it's passed in
     processor = StreamProcessor(
-        llm_client=llm_client,
+        llm_client=llm_client, # Pass the received client
         backend_messages=backend_messages,
         generation_config_dict=generation_config_dict,
         requested_model=requested_model,
