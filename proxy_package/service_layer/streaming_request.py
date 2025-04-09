@@ -21,6 +21,7 @@ from google.generativeai.types import generation_types as gemini_generation_type
 from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
 from openai import APIError as AzureAPIError, AuthenticationError as AzureAuthenticationError
 from proxy_package.reporitory_layer.agents.tools import save_files_from_response
+from proxy_package.service_layer.formating import _format_sse_payload
 # Define a union type for the possible stream chunk types from the backend generator
 BackendStreamItem = Union[GenerateContentResponse, AzureChatCompletionChunk, Exception]
 
@@ -29,45 +30,6 @@ SSE_DATA_PREFIX = "data: "
 SSE_DONE_MESSAGE = f"{SSE_DATA_PREFIX}[DONE]\n\n"
 CHAT_COMPLETION_CHUNK_OBJECT = "chat.completion.chunk"
 TEXT_COMPLETION_OBJECT = "text_completion" # Assuming this is the identifier for non-chat format
-
-# --- Helper Function for Payload Formatting (Keep as is) ---
-def _format_sse_payload(
-    request_id: str,
-    model: str,
-    system_fingerprint: Optional[str],
-    is_chat_format: bool,
-    content: Optional[str] = None,
-    finish_reason: Optional[str] = None,
-    is_error: bool = False
-) -> str:
-    # ... (implementation remains the same) ...
-    created = int(time.time())
-    payload: Dict[str, Any]
-
-    if is_chat_format:
-        delta = {"content": content} if content else {}
-        choice = {"index": 0, "delta": delta, "finish_reason": finish_reason}
-        payload = {
-            "id": request_id,
-            "object": CHAT_COMPLETION_CHUNK_OBJECT,
-            "created": created,
-            "model": model,
-            "choices": [choice],
-        }
-        if system_fingerprint:
-             payload["system_fingerprint"] = system_fingerprint
-    else: # Completion format
-        choice = {"index": 0, "text": content or "", "finish_reason": finish_reason}
-        payload = {
-            "id": request_id,
-            "object": TEXT_COMPLETION_OBJECT,
-            "created": created,
-            "model": model,
-            "choices": [choice],
-        }
-
-    return f"{SSE_DATA_PREFIX}{json.dumps(payload)}\n\n"
-
 
 # --- Stream Processor Class ---
 class StreamProcessor:
@@ -370,6 +332,6 @@ async def stream_response(
         yield chunk
 
 
-    if parse_to_files:
+    if True:
         structured_response = llm_client.generate_structured_content(processor.full_response_text)
         save_files_from_response(structured_response)

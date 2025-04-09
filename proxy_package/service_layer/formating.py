@@ -413,3 +413,48 @@ def create_generation_config_dict(body: Dict[str, Any]) -> Dict[str, Any]:
     if stop_val:
         generation_config_dict['stop'] = stop_val
     return generation_config_dict
+
+
+# --- Constants ---
+SSE_DATA_PREFIX = "data: "
+SSE_DONE_MESSAGE = f"{SSE_DATA_PREFIX}[DONE]\n\n"
+CHAT_COMPLETION_CHUNK_OBJECT = "chat.completion.chunk"
+TEXT_COMPLETION_OBJECT = "text_completion" # Assuming this is the identifier for non-chat format
+
+def _format_sse_payload(
+    request_id: str,
+    model: str,
+    system_fingerprint: Optional[str],
+    is_chat_format: bool,
+    content: Optional[str] = None,
+    finish_reason: Optional[str] = None,
+    is_error: bool = False
+) -> str:
+    # ... (implementation remains the same) ...
+    created = int(time.time())
+    payload: Dict[str, Any]
+
+    if is_chat_format:
+        delta = {"content": content} if content else {}
+        choice = {"index": 0, "delta": delta, "finish_reason": finish_reason}
+        payload = {
+            "id": request_id,
+            "object": CHAT_COMPLETION_CHUNK_OBJECT,
+            "created": created,
+            "model": model,
+            "choices": [choice],
+        }
+        if system_fingerprint:
+             payload["system_fingerprint"] = system_fingerprint
+    else: # Completion format
+        choice = {"index": 0, "text": content or "", "finish_reason": finish_reason}
+        payload = {
+            "id": request_id,
+            "object": TEXT_COMPLETION_OBJECT,
+            "created": created,
+            "model": model,
+            "choices": [choice],
+        }
+
+    return f"{SSE_DATA_PREFIX}{json.dumps(payload)}\n\n"
+
