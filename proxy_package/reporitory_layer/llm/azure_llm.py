@@ -201,7 +201,6 @@ class AzureLLM:
             return stream
         except (APIError, AuthenticationError) as e: # Catch errors during initiation
              logger.error(f"❌ Azure API Error (Streaming Init): {type(e).__name__} - Status={getattr(e, 'status_code', 'N/A')} Body={getattr(e, 'body', 'N/A')}")
-             traceback.print_exc()
              raise # Re-raise specific Azure exceptions
         except Exception as e:
             logger.error(f"❌ Error initiating Azure streaming call: {e}")
