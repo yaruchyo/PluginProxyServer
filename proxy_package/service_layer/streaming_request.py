@@ -22,16 +22,12 @@ from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
 from openai import APIError as AzureAPIError, AuthenticationError as AzureAuthenticationError
 from proxy_package.reporitory_layer.agents.tools import save_files_from_response
 from proxy_package.service_layer.formating import _format_sse_payload
+# Import the SSE constants Enum
+from ..domain_layer.sse_domain import SSEConstants
+
 # Define a union type for the possible stream chunk types from the backend generator
 BackendStreamItem = Union[GenerateContentResponse, AzureChatCompletionChunk, Exception]
 
-# --- Constants ---
-SSE_DATA_PREFIX = "data: "
-SSE_DONE_MESSAGE = f"{SSE_DATA_PREFIX}[DONE]\n\n"
-CHAT_COMPLETION_CHUNK_OBJECT = "chat.completion.chunk"
-TEXT_COMPLETION_OBJECT = "text_completion" # Assuming this is the identifier for non-chat format
-
-# --- Stream Processor Class ---
 class StreamProcessor:
     """
     Manages the process of receiving chunks from an LLM backend in a separate
@@ -296,7 +292,8 @@ class StreamProcessor:
                 except Exception as yield_err:
                     logger.error(f"[{self.request_id}] ❌ Failed to yield final error chunk after processing error: {yield_err}")
         finally:
-            yield SSE_DONE_MESSAGE
+            # Use the Enum to get the DONE message
+            yield SSEConstants.get_done_message()
             logger.info(f"[{self.request_id}] ✅ Sent [DONE] message.")
 
 
@@ -332,6 +329,6 @@ async def stream_response(
         yield chunk
 
 
-    if True:
+    if True: # TODO: This condition seems always true, review logic if needed
         structured_response = llm_client.generate_structured_content(processor.full_response_text)
         save_files_from_response(structured_response)

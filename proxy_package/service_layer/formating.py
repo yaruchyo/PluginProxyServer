@@ -14,6 +14,8 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
 from proxy_package.utils.logger import logger # Relative import
 from proxy_package.config import GEMINI_DEFAULT_MODEL, AZURE_OPENAI_DEPLOYMENT_NAME, LLM_BACKEND # Import backend info
+# Import the SSE constants Enum
+from ..domain_layer.sse_domain import SSEConstants
 
 # --- Gemini Specific Formatting ---
 
@@ -414,13 +416,6 @@ def create_generation_config_dict(body: Dict[str, Any]) -> Dict[str, Any]:
         generation_config_dict['stop'] = stop_val
     return generation_config_dict
 
-
-# --- Constants ---
-SSE_DATA_PREFIX = "data: "
-SSE_DONE_MESSAGE = f"{SSE_DATA_PREFIX}[DONE]\n\n"
-CHAT_COMPLETION_CHUNK_OBJECT = "chat.completion.chunk"
-TEXT_COMPLETION_OBJECT = "text_completion" # Assuming this is the identifier for non-chat format
-
 def _format_sse_payload(
     request_id: str,
     model: str,
@@ -439,7 +434,7 @@ def _format_sse_payload(
         choice = {"index": 0, "delta": delta, "finish_reason": finish_reason}
         payload = {
             "id": request_id,
-            "object": CHAT_COMPLETION_CHUNK_OBJECT,
+            "object": SSEConstants.CHAT_COMPLETION_CHUNK_OBJECT.value,
             "created": created,
             "model": model,
             "choices": [choice],
@@ -450,11 +445,11 @@ def _format_sse_payload(
         choice = {"index": 0, "text": content or "", "finish_reason": finish_reason}
         payload = {
             "id": request_id,
-            "object": TEXT_COMPLETION_OBJECT,
+            "object": SSEConstants.TEXT_COMPLETION_OBJECT.value,
             "created": created,
             "model": model,
             "choices": [choice],
         }
 
-    return f"{SSE_DATA_PREFIX}{json.dumps(payload)}\n\n"
-
+    # Use the Enum value for the data prefix
+    return f"{SSEConstants.DATA_PREFIX.value}{json.dumps(payload)}\n\n"
