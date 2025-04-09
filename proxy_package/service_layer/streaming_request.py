@@ -329,6 +329,6 @@ async def stream_response(
         yield chunk
 
 
-    if True: # TODO: This condition seems always true, review logic if needed
-        structured_response = llm_client.generate_structured_content(processor.full_response_text)
-        save_files_from_response(structured_response)
+    # if True: # TODO: This condition seems always true, review logic if needed
+    #     structured_response = llm_client.generate_structured_content(processor.full_response_text)
+    #     save_files_from_response(structured_response)
