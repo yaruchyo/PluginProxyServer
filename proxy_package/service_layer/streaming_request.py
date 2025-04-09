@@ -209,16 +209,6 @@ class StreamProcessor:
         processing_error = False
 
         try:
-            # Use self.llm_client and assume it has parse_chunks method
-            # Ensure GeminiLLM and AzureLLM implement parse_chunks(item) -> Tuple[Optional[str], Optional[str]]
-            # If parse_chunks is not implemented polymorphically, revert to isinstance checks here:
-            # if self.is_gemini:
-            #     chunk_text, chunk_finish_reason = self._parse_gemini_chunk(item)
-            # elif self.is_azure:
-            #     chunk_text, chunk_finish_reason = self._parse_azure_chunk(item)
-            # else: ... error ...
-
-            # Assuming polymorphic parse_chunks exists on self.llm_client:
             chunk_text, chunk_finish_reason = self.llm_client.parse_chunks(item)
 
         except AttributeError:

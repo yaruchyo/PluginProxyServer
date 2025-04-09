@@ -45,6 +45,7 @@ async def chat_completions(
             raise HTTPException(status_code=400, detail="Invalid JSON.")
 
         # 2. Extract Parameters (Keep as is)
+        tools = chat_request_data.get('tools', [])
         requested_model = chat_request_data.get('model', DEFAULT_MODEL_NAME)
         should_stream = chat_request_data.get('stream', False)
         openai_messages = chat_request_data.get('messages', [])
