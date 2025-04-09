@@ -130,11 +130,7 @@ class AzureLLM:
             logger.exception(e)
             raise # Re-raise other exceptions
 
-    def generate_structured_content_streaming(
-            self,
-            contents: List[Dict[str, Any]],
-            generation_config_dict: Optional[Dict[str, Any]] = None,
-            ) :
+    def generate_structured_content(self, full_answer) :
         """
         Generates content using the Azure OpenAI API (streaming).
 
@@ -149,28 +145,18 @@ class AzureLLM:
             Exception: For API or configuration errors during stream initiation.
                      Errors during iteration are handled by the consumer.
         """
-        azure_params = self._prepare_params(generation_config_dict)
-        logger.info(f"⚙️ Calling Azure OpenAI (Streaming) with params: {azure_params}")
-        try:
-            completion = self.client.beta.chat.completions.parse(
-                model=self.deployment_name,
-                messages=contents,
-                response_format=Res,
-                **azure_params
-            )
-            event = completion.choices[0].message.parsed
 
-            return event
+        messages = [{"role": "system", "content": "extranct from the answer requred information"},
+                    {"role": "user", "content": full_answer}]
+        completion = self.client.beta.chat.completions.parse(
+            model=self.model_name,
+            messages=messages,
+            temperature=0.3,
+            response_format=Response,
+        )
+        event = completion.choices[0].message.parsed
 
-        except (APIError, AuthenticationError) as e:  # Catch errors during initiation
-            logger.error(
-                f"❌ Azure API Error (Streaming Init): {type(e).__name__} - Status={getattr(e, 'status_code', 'N/A')} Body={getattr(e, 'body', 'N/A')}")
-            traceback.print_exc()
-            raise  # Re-raise specific Azure exceptions
-        except Exception as e:
-            logger.error(f"❌ Error initiating Azure streaming call: {e}")
-            logger.exception(e)
-            raise  # Re-raise exceptions during stream initiation
+        return event
 
 
     def generate_content_streaming(self, contents: List[Dict[str, Any]], generation_config_dict: Optional[Dict[str, Any]] = None) -> Iterator[ChatCompletionChunk]:

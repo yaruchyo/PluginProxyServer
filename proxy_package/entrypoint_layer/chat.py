@@ -9,7 +9,7 @@ from typing import Any, Optional, List, Dict, Union, Iterator
 
 # Relative imports
 from ..utils.logger import logger
-from ..domain_layer.file_responce import Response, FilesToUpdate
+from ..domain_layer.file_responce import Response, Files
 # Import the factory function, not the base class or getter
 from ..reporitory_layer.llm.llm_factory import create_llm_client, LLMClient # Keep LLMClient type hint
 from ..service_layer.formating import create_generation_config_dict

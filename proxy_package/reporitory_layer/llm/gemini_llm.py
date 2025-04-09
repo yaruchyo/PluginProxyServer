@@ -5,6 +5,7 @@ from google.genai import types # Import types
 from google.generativeai.types import generation_types
 from typing import Any, Optional, List, Dict, Union, Iterator, Tuple
 from proxy_package.service_layer.formating import format_openai_to_gemini
+from pydantic import BaseModel, TypeAdapter, ValidationError
 # Removed Response import as it's domain layer, not directly used here
 from ...domain_layer.file_responce import Response # Use relative import
 
@@ -189,3 +190,21 @@ class GeminiLLM:
             # Don't set finish_reason here, let the stream try to continue or end naturally
 
         return chunk_text, chunk_finish_reason
+
+    def generate_structured_content(self, full_answer) -> Response:
+        prompt = f"extranct from the answer requred information\n\nANSWER:\n\n{full_answer}"
+
+
+        response = self.client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config={
+                'response_mime_type': 'application/json',
+                'response_schema': Response,
+            },
+        )
+
+
+        # Use instantiated objects.
+        structured_response: Response = response.parsed
+        return structured_response

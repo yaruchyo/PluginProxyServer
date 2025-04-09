@@ -9,7 +9,7 @@ from typing import Any, Optional, List, Dict, Union, Iterator
 
 # Relative imports
 from ..utils.logger import logger
-from ..domain_layer.file_responce import Response, FilesToUpdate
+from ..domain_layer.file_responce import Response, Files
 from ..reporitory_layer.llm.llm_factory import LLMClient,create_llm_client
 from ..service_layer.formating import create_generation_config_dict
 from ..service_layer.non_streaming_request import handle_non_streaming_request
