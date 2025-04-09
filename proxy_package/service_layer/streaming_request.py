@@ -20,7 +20,7 @@ from google.genai.types import GenerateContentResponse
 from google.generativeai.types import generation_types as gemini_generation_types
 from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
 from openai import APIError as AzureAPIError, AuthenticationError as AzureAuthenticationError
-
+from proxy_package.reporitory_layer.agents.tools import save_files_from_response
 # Define a union type for the possible stream chunk types from the backend generator
 BackendStreamItem = Union[GenerateContentResponse, AzureChatCompletionChunk, Exception]
 
@@ -346,7 +346,8 @@ async def stream_response(
     requested_model: str,
     request_id: str,
     is_chat_format: bool = True,
-    parse_to_files: bool = False
+    parse_to_files: bool = False,
+
 ) -> AsyncGenerator[str, None]:
     """
     Handles streaming requests using the provided LLM client by delegating
@@ -369,67 +370,5 @@ async def stream_response(
         yield chunk
 
     structured_response = llm_client.generate_structured_content(processor.full_response_text)
-    save_files_from_response(structured_response)
-
-def save_files_from_response(structured_response: Response, base_dir: str = "."):
-    """
-    Processes the files_to_update list from a Response object
-    and writes the code content to the specified files relative to base_dir.
-
-    Args:
-        structured_response: The Response object containing file update information.
-        base_dir: The base directory where files should be saved. Defaults to current dir.
-    """
-    if not structured_response.files_to_update:
-        print("No files to update found in the response.")
-        return
-
-    print(f"Processing {len(structured_response.files_to_update)} file(s) for update...")
-
-    for file_info in structured_response.files_to_update:
-        # --- Input Validation ---
-        if not file_info.filename:
-            print("Skipping file update: 'filename' is missing or empty.")
-            continue
-        # We check for None specifically, allowing empty string "" as valid content
-        if file_info.code_to_update is None:
-            print(f"Skipping file update for '{file_info.filename}': 'code_to_update' is missing (None).")
-            continue
-
-        # --- Path Construction and Safety ---
-        # Clean the filename path (e.g., remove './', handle '../')
-        relative_path = os.path.normpath(file_info.filename)
-
-        # Basic security check: prevent writing outside the intended base_dir
-        # Disallow absolute paths and paths trying to escape the base directory
-        if os.path.isabs(relative_path) or relative_path.startswith(".."):
-            print(f"Skipping potentially unsafe file path: '{file_info.filename}'")
-            continue
-
-        # Construct the full path relative to the base directory
-        full_path = os.path.join(base_dir, relative_path)
-
-        print(f"Attempting to write file: {full_path}")
-
-        try:
-            # --- Directory Creation ---
-            # Ensure the target directory exists before writing the file
-            directory = os.path.dirname(full_path)
-            if directory:  # Only create if directory part is not empty
-                # exist_ok=True prevents an error if the directory already exists
-                os.makedirs(directory, exist_ok=True)
-                # print(f"Ensured directory exists: {directory}") # Optional: uncomment for verbose logging
-
-            # --- File Writing ---
-            # Open the file in write mode ('w'). This will overwrite existing files.
-            # Use 'utf-8' encoding as a standard practice.
-            with open(full_path, 'w', encoding='utf-8') as f:
-                f.write(file_info.code_to_update)
-            print(f"Successfully wrote {len(file_info.code_to_update)} bytes to {full_path}")
-
-        except OSError as e:
-            # Handle potential OS errors like permission issues, invalid paths etc.
-            print(f"Error writing file {full_path}: {e}")
-        except Exception as e:
-            # Catch any other unexpected errors during file processing
-            print(f"An unexpected error occurred while processing {full_path}: {e}")
+    if tools:
+        save_files_from_response(structured_response)
