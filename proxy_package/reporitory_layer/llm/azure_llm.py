@@ -3,8 +3,10 @@ from ...utils.logger import logger # Use relative import
 from proxy_package.domain_layer.file_responce import Response
 from openai import AzureOpenAI, APIError, AuthenticationError # Import AzureOpenAI and relevant errors
 from openai.types.chat import ChatCompletion, ChatCompletionChunk # Import response types
-from typing import Any, Optional, List, Dict, Union, Iterator
-import traceback
+from typing import Any, Optional, List, Dict, Union, Iterator, Tuple
+from google.genai import types
+from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
+BackendStreamItem = Union[types.GenerateContentResponse, AzureChatCompletionChunk, Exception]
 
 class AzureLLM:
     """Encapsulates Azure OpenAI API interactions."""
@@ -209,3 +211,24 @@ class AzureLLM:
 
     def create_backend_messages(self, openai_messages) -> List[Dict[str, Any]]:
         return openai_messages
+
+    def parse_chunks(self, item: BackendStreamItem) -> Tuple[Optional[str], Optional[str], bool]:
+        """Parses an Azure chunk into text content and finish reason."""
+        chunk_text = None
+        chunk_finish_reason = None
+        try:
+            if item.choices:
+                choice = item.choices[0]
+                if choice.delta and choice.delta.content:
+                    chunk_text = choice.delta.content
+                if choice.finish_reason:
+                    chunk_finish_reason = choice.finish_reason
+                # Potentially extract system_fingerprint if needed and not set globally
+                # if hasattr(item, 'system_fingerprint') and item.system_fingerprint:
+                #    self.system_fingerprint = item.system_fingerprint
+
+        except Exception as e:
+            logger.warning(f"[{self.request_id}] ⚠️ Error parsing Azure chunk: {e}. Chunk: {item}")
+            chunk_text = f"[AZURE_CHUNK_PARSING_ERROR: {e}]"
+
+        return chunk_text, chunk_finish_reason

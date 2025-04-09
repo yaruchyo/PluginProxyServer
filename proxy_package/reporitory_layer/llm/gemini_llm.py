@@ -3,7 +3,7 @@ from proxy_package.utils.logger import logger
 from google import genai
 from google.genai import types # Import types
 from google.generativeai.types import generation_types
-from typing import Any, Optional, List, Dict, Union, Iterator
+from typing import Any, Optional, List, Dict, Union, Iterator, Tuple
 from proxy_package.service_layer.formating import format_openai_to_gemini
 # Removed Response import as it's domain layer, not directly used here
 from ...domain_layer.file_responce import Response # Use relative import
@@ -155,3 +155,37 @@ class GeminiLLM:
 
     def create_backend_messages(self, openai_messages) -> List[Dict[str, Any]]:
         return format_openai_to_gemini(openai_messages)
+
+    def parse_chunks(self, item: types.GenerateContentResponse) -> Tuple[Optional[str], Optional[str]]:
+        chunk_text = None
+        chunk_finish_reason = None
+        try:
+            # Extract text (handle potential variations in structure)
+            if hasattr(item, 'text'):
+                chunk_text = item.text
+            elif hasattr(item, 'candidates') and item.candidates:
+                candidate = item.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content and hasattr(candidate.content, 'parts') and candidate.content.parts:
+                    chunk_text = "".join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
+
+            # Extract and map finish reason
+            if hasattr(item, 'candidates') and item.candidates:
+                candidate = item.candidates[0]
+                if hasattr(candidate, 'finish_reason') and candidate.finish_reason is not None:
+                    finish_reason_gemini = candidate.finish_reason
+                    # Use .name for enum, fallback to str()
+                    finish_reason_key = finish_reason_gemini.name if hasattr(finish_reason_gemini, 'name') else str(finish_reason_gemini)
+                    # Map Gemini reasons to OpenAI-like reasons
+                    finish_reason_map = {
+                        'STOP': 'stop', 'MAX_TOKENS': 'length', 'SAFETY': 'content_filter',
+                        'RECITATION': 'recitation', # Or map to 'stop' or 'content_filter' depending on desired behavior
+                        'OTHER': 'unknown', 'UNKNOWN': 'unknown', 'UNSPECIFIED': 'unknown'
+                    }
+                    chunk_finish_reason = finish_reason_map.get(finish_reason_key.upper(), 'unknown') # Use upper for safety
+
+        except Exception as e:
+            logger.warning(f"[{self.request_id}] ⚠️ Error parsing Gemini chunk: {e}. Chunk: {item}")
+            chunk_text = f"[GEMINI_CHUNK_PARSING_ERROR: {e}]" # Indicate error in content
+            # Don't set finish_reason here, let the stream try to continue or end naturally
+
+        return chunk_text, chunk_finish_reason
