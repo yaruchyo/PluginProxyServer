@@ -21,6 +21,7 @@ from .formating import (
 LLMResponse = Union[gemini_generation_types.GenerateContentResponse, AzureChatCompletion]
 
 async def handle_non_streaming_request(
+    llm_client,
     backend_messages: List[Dict[str, Any]],
     generation_config_dict: Dict[str, Any],
     requested_model: str,
@@ -28,7 +29,6 @@ async def handle_non_streaming_request(
     is_chat_format: bool = True
 ) -> Dict[str, Any]:
     """Handles non-streaming requests using the configured LLM client."""
-    llm_client = get_llm_client() # Get the initialized client instance
     loop = asyncio.get_event_loop()
 
     try:

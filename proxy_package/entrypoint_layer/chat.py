@@ -15,29 +15,10 @@ from ..reporitory_layer.llm.llm_factory import get_current_llm
 from ..service_layer.formating import create_generation_config_dict # Keep formatting separate
 from ..service_layer.non_streaming_request import handle_non_streaming_request
 from ..service_layer.streaming_request import stream_response
+from proxy_package.domain_layer.chat_domain import ChatMessage, ChatCompletionRequest
 from ..config import DEFAULT_MODEL_NAME
 
 chat_router = APIRouter()
-
-# Optional: Define Pydantic models for request validation
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatCompletionRequest(BaseModel):
-    model: str = DEFAULT_MODEL_NAME
-    messages: List[ChatMessage]
-    stream: bool = False
-    # Include other potential OpenAI parameters with defaults or Optional
-    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
-    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    max_tokens: Optional[int] = Field(default=None, ge=1)
-    # ... add other parameters as needed (stop, presence_penalty, etc.)
-
-    # Use model_extra to allow arbitrary keys if needed, or keep it strict
-    # class Config:
-    #     extra = 'allow'
-
 
 @chat_router.post("/v1/chat/completions")
 async def chat_completions(
@@ -55,8 +36,7 @@ async def chat_completions(
     try:
         # 1. Parse and Validate Request Body
         try:
-            body_raw = await request.json()
-            chat_request_data = body_raw
+            chat_request_data = await request.json()
             logger.info(f"[{request_id}] ➡️ Request Body:\n{json.dumps(chat_request_data, indent=2)}")
 
         except json.JSONDecodeError:
@@ -94,7 +74,6 @@ async def chat_completions(
         else:
             logger.info(f"[{request_id}] 📄 Handling NON-STREAMING chat request...")
             response_content = await handle_non_streaming_request(
-                # Pass the specific client instance
                 llm_client=llm_client,
                 backend_messages=backend_messages,
                 generation_config_dict=generation_config_dict,
