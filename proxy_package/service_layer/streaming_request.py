@@ -369,6 +369,7 @@ async def stream_response(
     async for chunk in processor.process_stream():
         yield chunk
 
-    structured_response = llm_client.generate_structured_content(processor.full_response_text)
-    if tools:
+
+    if parse_to_files:
+        structured_response = llm_client.generate_structured_content(processor.full_response_text)
         save_files_from_response(structured_response)
