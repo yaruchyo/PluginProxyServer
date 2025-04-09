@@ -1,5 +1,6 @@
 import os
 from typing import Union
+from fastapi import HTTPException
 # --- Application Context / Shared Resources ---
 from ...config import ( # Use relative imports
     LLM_BACKEND,
@@ -61,3 +62,12 @@ def get_llm_client() -> LLMClient:
         # This should ideally not happen if startup checks are robust
         raise RuntimeError("LLM Client is not available.")
     return _llm
+
+
+async def get_current_llm() -> LLMClient:
+    try:
+        return get_llm_client()
+    except RuntimeError as e:
+        logger.critical(f"LLM Client unavailable: {e}")
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+

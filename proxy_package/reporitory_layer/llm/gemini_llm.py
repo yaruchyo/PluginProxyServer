@@ -4,6 +4,7 @@ from google import genai
 from google.genai import types # Import types
 from google.generativeai.types import generation_types
 from typing import Any, Optional, List, Dict, Union, Iterator
+from proxy_package.service_layer.formating import format_openai_to_gemini
 # Removed Response import as it's domain layer, not directly used here
 from ...domain_layer.file_responce import Response # Use relative import
 
@@ -151,3 +152,6 @@ class GeminiLLM:
             logger.error(f"❌ Error initiating Gemini streaming call: {e}")
             logger.exception(e)
             raise # Re-raise exceptions during stream initiation
+
+    def create_backend_messages(self, openai_messages) -> List[Dict[str, Any]]:
+        return format_openai_to_gemini(openai_messages)

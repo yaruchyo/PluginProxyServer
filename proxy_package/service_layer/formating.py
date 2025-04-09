@@ -392,3 +392,24 @@ def format_azure_to_openai_completion(azure_response: ChatCompletion, requested_
         openai_response["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     return openai_response
+
+def create_generation_config_dict(body: Dict[str, Any]) -> Dict[str, Any]:
+    generation_config_dict: Dict[str, Any] = {}
+    if body.get('max_tokens') is not None:
+        generation_config_dict['max_tokens'] = body['max_tokens']
+    if body.get('temperature') is not None:
+        generation_config_dict['temperature'] = body['temperature']
+    if body.get('top_p') is not None:
+        generation_config_dict['top_p'] = body['top_p']
+    if body.get('presence_penalty') is not None:
+        generation_config_dict['presence_penalty'] = body['presence_penalty']
+    if body.get('frequency_penalty') is not None:
+        generation_config_dict['frequency_penalty'] = body['frequency_penalty']
+    if body.get('logit_bias') is not None:
+        generation_config_dict['logit_bias'] = body['logit_bias']
+    if body.get('user') is not None:
+        generation_config_dict['user'] = body['user']
+    stop_val = body.get('stop')
+    if stop_val:
+        generation_config_dict['stop'] = stop_val
+    return generation_config_dict

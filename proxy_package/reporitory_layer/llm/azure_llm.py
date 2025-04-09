@@ -205,3 +205,7 @@ class AzureLLM:
             logger.error(f"❌ Error initiating Azure streaming call: {e}")
             logger.exception(e)
             raise # Re-raise exceptions during stream initiation
+
+
+    def create_backend_messages(self, openai_messages) -> List[Dict[str, Any]]:
+        return openai_messages
