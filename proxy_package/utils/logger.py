@@ -1,5 +1,6 @@
-import loguru
 import sys
+
+import loguru
 
 # Configure Loguru
 logger = loguru.logger

@@ -1,29 +1,39 @@
-import json
-import time
-import uuid
 import asyncio
-import threading
-import traceback
-from pydantic import TypeAdapter, ValidationError
-from typing import Any, Optional, List, Dict, Union, Iterator, Tuple, AsyncGenerator
+import json
 import os
-# Use relative imports
-from ..utils.logger import logger
-from ..domain_layer.file_responce import Response
-from ..reporitory_layer.llm.llm_factory import LLMClient # Import base class/union type
-from ..reporitory_layer.llm.gemini_llm import GeminiLLM
-from ..reporitory_layer.llm.azure_llm import AzureLLM
-# from ..reporitory_layer.llm.llm_factory import get_llm_client # REMOVE this import
-from ..config import GEMINI_DEFAULT_MODEL, AZURE_OPENAI_DEPLOYMENT_NAME # Keep for potential defaults/info
+import threading
+import time
+import traceback
+import uuid
+from typing import Any, AsyncGenerator, Dict, Iterator, List, Optional, Tuple, Union
+
 from google.genai.types import GenerateContentResponse
+
 # Import backend-specific types with aliases
 from google.generativeai.types import generation_types as gemini_generation_types
+from openai import APIError as AzureAPIError
+from openai import AuthenticationError as AzureAuthenticationError
 from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
-from openai import APIError as AzureAPIError, AuthenticationError as AzureAuthenticationError
+from pydantic import TypeAdapter, ValidationError
+
 from proxy_package.reporitory_layer.agents.tools import save_files_from_response
 from proxy_package.service_layer.formating import _format_sse_payload
+
+# from ..reporitory_layer.llm.llm_factory import get_llm_client # REMOVE this import
+from ..config import (  # Keep for potential defaults/info
+    AZURE_OPENAI_DEPLOYMENT_NAME,
+    GEMINI_DEFAULT_MODEL,
+)
+from ..domain_layer.file_responce import Response
+
 # Import the SSE constants Enum
 from ..domain_layer.sse_domain import SSEConstants
+from ..reporitory_layer.llm.azure_llm import AzureLLM
+from ..reporitory_layer.llm.gemini_llm import GeminiLLM
+from ..reporitory_layer.llm.llm_factory import LLMClient  # Import base class/union type
+
+# Use relative imports
+from ..utils.logger import logger
 
 # Define a union type for the possible stream chunk types from the backend generator
 BackendStreamItem = Union[GenerateContentResponse, AzureChatCompletionChunk, Exception]

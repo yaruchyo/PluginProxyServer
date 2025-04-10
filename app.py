@@ -1,4 +1,5 @@
 import os
+
 import uvicorn
 from dotenv import load_dotenv
 
@@ -6,10 +7,12 @@ from dotenv import load_dotenv
 # This ensures config is loaded before proxy_package is imported
 load_dotenv()
 
+from proxy_package import app  # Import the app instance from __init__.py
+
 # --- Import logger and the app instance ---
 # Logger setup should happen within the package now
 from proxy_package.utils.logger import logger
-from proxy_package import app # Import the app instance from __init__.py
+
 
 # --- Server Start Function ---
 def start() -> None:

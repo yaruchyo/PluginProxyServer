@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class SSEConstants(Enum):
     """Constants related to Server-Sent Events (SSE) formatting."""
     DATA_PREFIX = "data: "

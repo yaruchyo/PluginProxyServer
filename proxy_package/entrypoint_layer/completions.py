@@ -1,20 +1,24 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import StreamingResponse, JSONResponse
+import asyncio
 import json
 import time
 import uuid
-import asyncio
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import TypeAdapter, ValidationError
-from typing import Any, Optional, List, Dict, Union, Iterator
+
 from proxy_package.domain_layer.llm_domain import LLMResponseModel
-# Relative imports
-from ..utils.logger import logger
-from ..domain_layer.file_responce import Response, Files
-from ..reporitory_layer.llm.llm_factory import LLMClient,create_llm_client
+
+from ..config import DEFAULT_MODEL_NAME
+from ..domain_layer.file_responce import Files, Response
+from ..reporitory_layer.llm.llm_factory import LLMClient, create_llm_client
 from ..service_layer.formating import create_generation_config_dict
 from ..service_layer.non_streaming_request import handle_non_streaming_request
 from ..service_layer.streaming_request import stream_response
-from ..config import DEFAULT_MODEL_NAME
+
+# Relative imports
+from ..utils.logger import logger
 
 completions_router = APIRouter()
 

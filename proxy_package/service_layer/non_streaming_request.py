@@ -1,20 +1,27 @@
 import asyncio
-from typing import Any, List, Dict, Union
+from typing import Any, Dict, List, Union
+
 from fastapi import HTTPException
 from google.generativeai.types import generation_types as gemini_generation_types
-from openai import APIError as AzureAPIError, AuthenticationError as AzureAuthenticationError
+from openai import APIError as AzureAPIError
+from openai import AuthenticationError as AzureAuthenticationError
 from openai.types.chat import ChatCompletion as AzureChatCompletion
+
+from ..reporitory_layer.llm.azure_llm import AzureLLM
+
+# Import the specific LLM classes for type checking
+from ..reporitory_layer.llm.gemini_llm import GeminiLLM
 
 # Use relative imports
 from ..utils.logger import logger
-# Import the specific LLM classes for type checking
-from ..reporitory_layer.llm.gemini_llm import GeminiLLM
-from ..reporitory_layer.llm.azure_llm import AzureLLM
+
 # from ..reporitory_layer.llm.llm_factory import get_llm_client # REMOVE this import
 # Import all necessary formatters
 from .formating import (
-    format_gemini_to_openai_chat, format_gemini_to_openai_completion,
-    format_azure_to_openai_chat, format_azure_to_openai_completion
+    format_azure_to_openai_chat,
+    format_azure_to_openai_completion,
+    format_gemini_to_openai_chat,
+    format_gemini_to_openai_completion,
 )
 
 # Define a union type for the possible raw responses

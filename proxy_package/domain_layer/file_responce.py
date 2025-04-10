@@ -1,5 +1,7 @@
-from pydantic import BaseModel, TypeAdapter, ValidationError, Field
-from typing import Any, Optional, List, Dict, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
+
 
 class Files(BaseModel):
     filename: Optional[str] = Field(None, description="Provide the name for this file.")

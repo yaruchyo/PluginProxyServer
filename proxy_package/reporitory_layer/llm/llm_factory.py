@@ -1,21 +1,24 @@
 import os
-from typing import Union, Dict, Any, Optional
+import re  # Import regex for model matching
+from typing import Any, Dict, Optional, Union
+
 from fastapi import HTTPException
+
 from proxy_package.domain_layer.llm_domain import LLMResponseModel
-import re # Import regex for model matching
 
 # --- Application Context / Shared Resources ---
-from ...config import ( # Use relative imports
-    # Keep ALL credentials
-    GEMINI_API_KEY, GEMINI_DEFAULT_MODEL,
-    AZURE_OPENAI_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_DEPLOYMENT_NAME, AZURE_OPENAI_MAX_RETRIES,
-    # Add known Azure deployments if needed for mapping, or rely on AZURE_OPENAI_DEPLOYMENT_NAME as one possibility
-    # Example: KNOWN_AZURE_DEPLOYMENTS = ["gpt-4o", "gpt-35-turbo", AZURE_OPENAI_DEPLOYMENT_NAME]
+from ...config import (  # Use relative imports; Keep ALL credentials; Add known Azure deployments if needed for mapping, or rely on AZURE_OPENAI_DEPLOYMENT_NAME as one possibility; Example: KNOWN_AZURE_DEPLOYMENTS = ["gpt-4o", "gpt-35-turbo", AZURE_OPENAI_DEPLOYMENT_NAME]
+    AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_DEPLOYMENT_NAME,
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_KEY,
+    AZURE_OPENAI_MAX_RETRIES,
+    GEMINI_API_KEY,
+    GEMINI_DEFAULT_MODEL,
 )
-from .gemini_llm import GeminiLLM
+from ...utils.logger import logger  # Use relative import
 from .azure_llm import AzureLLM
-from ...utils.logger import logger # Use relative import
+from .gemini_llm import GeminiLLM
 
 # --- Define the type hint for the LLM client ---
 # Base class approach (if GeminiLLM and AzureLLM inherit from a common base)

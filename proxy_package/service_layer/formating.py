@@ -1,19 +1,31 @@
 # --- Helper Functions (Formatting remains the same) ---
-from fastapi import HTTPException # Keep only necessary imports
-import os
-import json
-import time
-import uuid
 import asyncio
-from proxy_package.domain_layer.file_responce import Response # Relative import
-from google.generativeai.types import generation_types as gemini_generation_types # Alias for clarity
-from openai.types.chat import ChatCompletion, ChatCompletionChunk # Azure response types
-from dotenv import load_dotenv
+import json
+import os
+import time
 import traceback
+import uuid
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from dotenv import load_dotenv
+from fastapi import HTTPException  # Keep only necessary imports
+from google.generativeai.types import (
+    generation_types as gemini_generation_types,  # Alias for clarity
+)
+from openai.types.chat import (  # Azure response types
+    ChatCompletion,
+    ChatCompletionChunk,
+)
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from typing import Any, Optional, List, Dict, Union, Iterator
-from proxy_package.utils.logger import logger # Relative import
-from proxy_package.config import GEMINI_DEFAULT_MODEL, AZURE_OPENAI_DEPLOYMENT_NAME, LLM_BACKEND # Import backend info
+
+from proxy_package.config import (  # Import backend info
+    AZURE_OPENAI_DEPLOYMENT_NAME,
+    GEMINI_DEFAULT_MODEL,
+    LLM_BACKEND,
+)
+from proxy_package.domain_layer.file_responce import Response  # Relative import
+from proxy_package.utils.logger import logger  # Relative import
+
 # Import the SSE constants Enum
 from ..domain_layer.sse_domain import SSEConstants
 

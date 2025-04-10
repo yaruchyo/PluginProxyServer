@@ -1,6 +1,8 @@
 import os
-from proxy_package.utils.logger import logger
+
 from proxy_package.domain_layer.file_responce import Response
+from proxy_package.utils.logger import logger
+
 
 def save_files_from_response(structured_response: Response, base_dir: str = "."):
     """

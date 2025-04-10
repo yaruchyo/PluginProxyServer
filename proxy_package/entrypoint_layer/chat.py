@@ -1,23 +1,30 @@
-from fastapi import APIRouter, HTTPException, Request # Removed Depends
-from fastapi.responses import StreamingResponse, JSONResponse
-from proxy_package.domain_layer.llm_domain import LLMResponseModel
+import asyncio
 import json
 import time
 import uuid
-import asyncio
-from pydantic import TypeAdapter, ValidationError, BaseModel, Field
-from typing import Any, Optional, List, Dict, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Union
 
-# Relative imports
-from ..utils.logger import logger
-from ..domain_layer.file_responce import Response, Files
+from fastapi import APIRouter, HTTPException, Request  # Removed Depends
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
+
+from proxy_package.domain_layer.chat_domain import ChatCompletionRequest, ChatMessage
+from proxy_package.domain_layer.llm_domain import LLMResponseModel
+
+from ..config import DEFAULT_MODEL_NAME
+from ..domain_layer.file_responce import Files, Response
+
 # Import the factory function, not the base class or getter
-from ..reporitory_layer.llm.llm_factory import create_llm_client, LLMClient # Keep LLMClient type hint
+from ..reporitory_layer.llm.llm_factory import (  # Keep LLMClient type hint
+    LLMClient,
+    create_llm_client,
+)
 from ..service_layer.formating import create_generation_config_dict
 from ..service_layer.non_streaming_request import handle_non_streaming_request
 from ..service_layer.streaming_request import stream_response
-from proxy_package.domain_layer.chat_domain import ChatMessage, ChatCompletionRequest
-from ..config import DEFAULT_MODEL_NAME
+
+# Relative imports
+from ..utils.logger import logger
 
 chat_router = APIRouter()
 

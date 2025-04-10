@@ -1,7 +1,15 @@
 
-from pydantic import TypeAdapter, ValidationError, BaseModel, Field # Added for potential request model
-from typing import Any, Optional, List, Dict, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from pydantic import (  # Added for potential request model
+    BaseModel,
+    Field,
+    TypeAdapter,
+    ValidationError,
+)
+
 from ..config import DEFAULT_MODEL_NAME
+
 
 class ChatMessage(BaseModel):
     role: str

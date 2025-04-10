@@ -1,11 +1,20 @@
 # --- Import logger from the utility module using relative path ---
-from ...utils.logger import logger # Use relative import
-from proxy_package.domain_layer.file_responce import Response
-from openai import AzureOpenAI, APIError, AuthenticationError # Import AzureOpenAI and relevant errors
-from openai.types.chat import ChatCompletion, ChatCompletionChunk # Import response types
-from typing import Any, Optional, List, Dict, Union, Iterator, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+
 from google.genai import types
+from openai import (  # Import AzureOpenAI and relevant errors
+    APIError,
+    AuthenticationError,
+    AzureOpenAI,
+)
+from openai.types.chat import ChatCompletion  # Import response types
+from openai.types.chat import ChatCompletionChunk
 from openai.types.chat import ChatCompletionChunk as AzureChatCompletionChunk
+
+from proxy_package.domain_layer.file_responce import Response
+
+from ...utils.logger import logger  # Use relative import
+
 BackendStreamItem = Union[types.GenerateContentResponse, AzureChatCompletionChunk, Exception]
 
 class AzureLLM:

@@ -1,13 +1,17 @@
 # --- Import logger from the utility module using relative path ---
-from proxy_package.utils.logger import logger
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+
 from google import genai
-from google.genai import types # Import types
+from google.genai import types  # Import types
 from google.generativeai.types import generation_types
-from typing import Any, Optional, List, Dict, Union, Iterator, Tuple
-from proxy_package.service_layer.formating import format_openai_to_gemini
 from pydantic import BaseModel, TypeAdapter, ValidationError
+
+from proxy_package.service_layer.formating import format_openai_to_gemini
+from proxy_package.utils.logger import logger
+
 # Removed Response import as it's domain layer, not directly used here
-from ...domain_layer.file_responce import Response # Use relative import
+from ...domain_layer.file_responce import Response  # Use relative import
+
 
 class GeminiLLM:
     """Encapsulates Google Gemini API interactions."""

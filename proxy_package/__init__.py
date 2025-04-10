@@ -1,19 +1,29 @@
 import os
+from typing import (  # Keep necessary typing imports
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Union,
+)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Any, Optional, List, Dict, Union, Iterator # Keep necessary typing imports
-
-# --- Import logger first ---
-from .utils.logger import logger
 
 # --- Import configuration and initialize LLM Factory ---
 # This import triggers the LLM client initialization based on .env
-from .config import LLM_BACKEND, DEFAULT_MODEL_NAME
-from .reporitory_layer.llm import llm_factory # Import the module to ensure initialization
+from .config import DEFAULT_MODEL_NAME, LLM_BACKEND
 
 # --- Import Routers (Now safe to import as config/context are loaded) ---
 from .entrypoint_layer.chat import chat_router
 from .entrypoint_layer.completions import completions_router
+from .reporitory_layer.llm import (
+    llm_factory,  # Import the module to ensure initialization
+)
+
+# --- Import logger first ---
+from .utils.logger import logger
 
 # --- Create FastAPI app ---
 app = FastAPI(title=f"OpenAI-Compatible Proxy ({LLM_BACKEND.upper()} Backend)")

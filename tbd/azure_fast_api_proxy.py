@@ -1,25 +1,32 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-import os
-import json
-import time
-import threading
-import uuid
 import asyncio
+import json
+import os
+import threading
+import time
+import traceback
+import uuid
+from typing import Any, Dict, List, Optional, Union
+
+import loguru
+import uvicorn
+
+# --- Common Imports ---
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+
 # --- Gemini Imports (Keep for non-streaming or if needed elsewhere) ---
 # from google import genai
 # from google.genai import types as gemini_types
 # from google.generativeai.types import generation_types as gemini_generation_types
 # --- Azure OpenAI Imports ---
-from openai import AzureOpenAI, APIError, AuthenticationError # Import AzureOpenAI and relevant errors
-# --- Common Imports ---
-from dotenv import load_dotenv
-import traceback
-import uvicorn
-import loguru
+from openai import (  # Import AzureOpenAI and relevant errors
+    APIError,
+    AuthenticationError,
+    AzureOpenAI,
+)
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from typing import Any, Optional, List, Dict, Union
 
 logger = loguru.logger
 # Load environment variables
