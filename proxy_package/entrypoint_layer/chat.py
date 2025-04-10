@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request # Removed Depends
 from fastapi.responses import StreamingResponse, JSONResponse
+from proxy_package.domain_layer.llm_domain import LLMResponseModel
 import json
 import time
 import uuid
@@ -23,6 +24,7 @@ chat_router = APIRouter()
 @chat_router.post("/v1/chat/completions")
 async def chat_completions(
     request: Request, # Keep raw request
+
     # llm_client: LLMClient = Depends(get_current_llm) # REMOVED Dependency Injection
 ):
     """
@@ -46,6 +48,7 @@ async def chat_completions(
 
         # 2. Extract Parameters (Keep as is)
         tools = chat_request_data.get('tools', [])
+        llm_response = LLMResponseModel(**chat_request_data)
         requested_model = chat_request_data.get('model', DEFAULT_MODEL_NAME)
         should_stream = chat_request_data.get('stream', False)
         openai_messages = chat_request_data.get('messages', [])
@@ -56,7 +59,7 @@ async def chat_completions(
 
         # --- 3. Create LLM Client Dynamically ---
         try:
-            llm_client = create_llm_client(requested_model)
+            llm_client = create_llm_client(llm_response)
         except ValueError as e:
             # Errors from create_llm_client (unknown model, missing creds)
             logger.error(f"[{request_id}] ❌ Failed to create LLM client for model '{requested_model}': {e}")

@@ -6,7 +6,7 @@ import uuid
 import asyncio
 from pydantic import TypeAdapter, ValidationError
 from typing import Any, Optional, List, Dict, Union, Iterator
-
+from proxy_package.domain_layer.llm_domain import LLMResponseModel
 # Relative imports
 from ..utils.logger import logger
 from ..domain_layer.file_responce import Response, Files
@@ -41,10 +41,11 @@ async def completions(
             raise HTTPException(status_code=422, detail=e.errors())
 
         # 2. Extract Parameters
+        llm_response = LLMResponseModel(**completion_request_data)
         requested_model = completion_request_data.get('model', DEFAULT_MODEL_NAME)
         prompt = completion_request_data.get('prompt')
 
-        llm_client = create_llm_client(requested_model)
+        llm_client = create_llm_client(llm_response)
 
         if not prompt:
             logger.warning(f"[{request_id}] ⚠️ Request received with no prompt.")

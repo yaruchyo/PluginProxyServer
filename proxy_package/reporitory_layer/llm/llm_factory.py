@@ -1,6 +1,7 @@
 import os
 from typing import Union, Dict, Any, Optional
 from fastapi import HTTPException
+from proxy_package.domain_layer.llm_domain import LLMResponseModel
 import re # Import regex for model matching
 
 # --- Application Context / Shared Resources ---
@@ -60,15 +61,13 @@ def _validate_credentials():
 _validate_credentials() # Run validation when module is imported
 
 # --- Factory Function ---
-def create_llm_client(requested_model_name: str) -> LLMClient:
+def create_llm_client(requested_model: LLMResponseModel) -> LLMClient:
     """
     Creates and returns an LLM client instance based on the requested model name
     using structural pattern matching.
 
     Args:
-        requested_model_name: The model name specified in the request (e.g.,
-                              "gemini-1.5-pro", "gpt-4o").
-
+        requested_model: LLMResponseModel
     Returns:
         An instance of GeminiLLM or AzureLLM.
 
@@ -78,64 +77,60 @@ def create_llm_client(requested_model_name: str) -> LLMClient:
                        Uses status codes 400 for client errors (bad request/config)
                        and 500 for server-side initialization errors.
     """
-    logger.info(f"Attempting to create LLM client for model: {requested_model_name}")
+    logger.info(f"Attempting to create LLM client for model: {requested_model.llm_params.provider}")
 
-    if requested_model_name.lower().startswith("gemini"):
+    if requested_model.llm_params.provider.lower().startswith("gemini"):
         backend_type = "gemini"
     else:
         # Assuming any non-Gemini request is intended for Azure
         backend_type = "azure"
-        logger.debug(f"Model '{requested_model_name}' does not start with 'gemini', assuming Azure backend.")
+        logger.debug(f"Model '{requested_model}' does not start with 'gemini', assuming Azure backend.")
 
     # --- Use match statement to create the appropriate client ---
     match backend_type:
         case "gemini":
-            logger.debug(f"Model '{requested_model_name}' identified as Gemini.")
+            logger.debug(f"Model '{requested_model.llm_params}' identified as Gemini.")
             # Validate Gemini credentials
-            if not all([_gemini_creds["api_key"], _gemini_creds["default_model"]]): # Keep check for default model as fallback? Or remove? Let's keep for now.
-                error_msg = f"Missing or incomplete Gemini credentials (GOOGLE_API_KEY/GOOGLE_MODEL) in configuration. Cannot serve model '{requested_model_name}'."
+            #if not all([_gemini_creds["api_key"], _gemini_creds["default_model"]]):
+            if not all([requested_model.llm_params.apiKey, requested_model.llm_params.model]): # Keep check for default model as fallback? Or remove? Let's keep for now.
+                error_msg = f"Missing or incomplete Gemini credentials (GOOGLE_API_KEY/GOOGLE_MODEL) in configuration. Cannot serve model '{requested_model.llm_params.provider}'."
                 logger.error(f"❌ Cannot create GeminiLLM: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg) # 400 Bad Request (config issue)
             try:
                 # Pass the *requested* model name to the Gemini client constructor
                 client = GeminiLLM(
-                    api_key=_gemini_creds["api_key"],
-                    model_name=_gemini_creds["default_model"] # Use the specific requested model
+                    api_key=requested_model.llm_params.apiKey,
+                    model_name=requested_model.llm_params.model # Use the specific requested model
             )
-                logger.info(f"✅ Created GeminiLLM client for model: {requested_model_name}")
+                logger.info(f"✅ Created GeminiLLM client for model: {requested_model.llm_params.provider}")
                 return client
             except Exception as e:
-                error_msg = f"Failed to initialize Gemini client for model {requested_model_name}: {e}"
+                error_msg = f"Failed to initialize Gemini client for model {requested_model.llm_params.provider}: {e}"
                 logger.error(f"❌ {error_msg}")
                 # 500 Internal Server Error for initialization failures
                 raise HTTPException(status_code=500, detail=error_msg)
 
         case "azure":
-            logger.debug(f"Model '{requested_model_name}' identified as Azure.")
+            logger.debug(f"Model '{requested_model}' identified as Azure.")
             # Validate Azure credentials
-            if not all([_azure_creds["api_key"], _azure_creds["api_version"], _azure_creds["endpoint"], _azure_creds["deployment_name"]]): # Check all required Azure creds
-                error_msg = f"Missing or incomplete Azure OpenAI credentials in configuration. Cannot serve model '{requested_model_name}'."
+            if not all([requested_model.llm_params.apiKey, requested_model.llm_params.version, requested_model.llm_params.endpoint, requested_model.llm_params.model]): # Check all required Azure creds
+                error_msg = f"Missing or incomplete Azure OpenAI credentials in configuration. Cannot serve model '{requested_model.llm_params.provider}'."
                 logger.error(f"❌ Cannot create AzureLLM: {error_msg}")
                 raise HTTPException(status_code=400, detail=error_msg) # 400 Bad Request (config issue)
 
-            # Use the requested_model_name as the deployment_name for Azure
-            # Assumption: The 'model' field in the request corresponds to the Azure 'deployment_name'
-            azure_deployment_to_use = requested_model_name
-            logger.info(f"Using Azure deployment name: {azure_deployment_to_use}")
-
             try:
                 client = AzureLLM(
-                    api_key=_azure_creds["api_key"],
-                    api_version=_azure_creds["api_version"],
-                    endpoint=_azure_creds["endpoint"],
-                    deployment_name=_azure_creds["deployment_name"], # Use the requested model name here
-                    max_retries=_azure_creds["max_retries"],
+                    api_key=requested_model.llm_params.apiKey,
+                    api_version=requested_model.llm_params.version,
+                    endpoint=requested_model.llm_params.endpoint,
+                    deployment_name=requested_model.llm_params.model, # Use the requested model name here
+                    max_retries=requested_model.llm_params.max_retries,
                 )
-                logger.info(f"✅ Created AzureLLM client for deployment: {azure_deployment_to_use}")
+                logger.info(f"✅ Created AzureLLM client for deployment: {requested_model.llm_params.provider}")
                 return client
             except Exception as e:
                 # Catch potential errors during Azure client initialization (e.g., invalid endpoint, deployment not found)
-                error_msg = f"Failed to initialize Azure client for deployment {azure_deployment_to_use}: {e}"
+                error_msg = f"Failed to initialize Azure client for deployment {requested_model.llm_params.provider}: {e}"
                 logger.error(f"❌ {error_msg}")
                  # 500 Internal Server Error for initialization failures
                 raise HTTPException(status_code=500, detail=error_msg)
@@ -143,6 +138,6 @@ def create_llm_client(requested_model_name: str) -> LLMClient:
         case _:
             # This case should theoretically not be reached with the current logic,
             # but it's good practice for completeness.
-            error_msg = f"Unable to determine backend for model: {requested_model_name}"
+            error_msg = f"Unable to determine backend for model: {requested_model.llm_params.provider}"
             logger.error(f"❌ {error_msg}")
             raise HTTPException(status_code=400, detail=error_msg) # 400 Bad Request (unrecognized model)
