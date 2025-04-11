@@ -7,15 +7,15 @@ from fastapi import HTTPException
 from proxy_package.domain_layer.llm_domain import LLMResponseModel
 
 # --- Application Context / Shared Resources ---
-from ...config import (  # Use relative imports; Keep ALL credentials; Add known Azure deployments if needed for mapping, or rely on AZURE_OPENAI_DEPLOYMENT_NAME as one possibility; Example: KNOWN_AZURE_DEPLOYMENTS = ["gpt-4o", "gpt-35-turbo", AZURE_OPENAI_DEPLOYMENT_NAME]
-    AZURE_OPENAI_API_VERSION,
-    AZURE_OPENAI_DEPLOYMENT_NAME,
-    AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_KEY,
-    AZURE_OPENAI_MAX_RETRIES,
-    GEMINI_API_KEY,
-    GEMINI_DEFAULT_MODEL,
-)
+# from ...config import (  # Use relative imports; Keep ALL credentials; Add known Azure deployments if needed for mapping, or rely on AZURE_OPENAI_DEPLOYMENT_NAME as one possibility; Example: KNOWN_AZURE_DEPLOYMENTS = ["gpt-4o", "gpt-35-turbo", AZURE_OPENAI_DEPLOYMENT_NAME]
+#     AZURE_OPENAI_API_VERSION,
+#     AZURE_OPENAI_DEPLOYMENT_NAME,
+#     AZURE_OPENAI_ENDPOINT,
+#     AZURE_OPENAI_KEY,
+#     AZURE_OPENAI_MAX_RETRIES,
+#     GEMINI_API_KEY,
+#     GEMINI_DEFAULT_MODEL,
+# )
 from ...utils.logger import logger  # Use relative import
 from .azure_llm import AzureLLM
 from .gemini_llm import GeminiLLM
@@ -29,39 +29,39 @@ LLMClient = Union[GeminiLLM, AzureLLM]
 
 # --- Store Credentials (Loaded at startup) ---
 # It's good practice to validate these at startup even if not creating a client yet
-_gemini_creds = {
-    "api_key": GEMINI_API_KEY,
-    "default_model": GEMINI_DEFAULT_MODEL
-}
-_azure_creds = {
-    "api_key": AZURE_OPENAI_KEY,
-    "api_version": AZURE_OPENAI_API_VERSION,
-    "endpoint": AZURE_OPENAI_ENDPOINT,
-    "deployment_name": AZURE_OPENAI_DEPLOYMENT_NAME, # Default/primary deployment
-    "max_retries": AZURE_OPENAI_MAX_RETRIES,
-    # Consider adding a list of *all* valid deployment names if needed for matching
-    # "valid_deployments": [AZURE_OPENAI_DEPLOYMENT_NAME, "other-deployment-name"]
-}
+# _gemini_creds = {
+#     "api_key": GEMINI_API_KEY,
+#     "default_model": GEMINI_DEFAULT_MODEL
+# }
+# _azure_creds = {
+#     "api_key": AZURE_OPENAI_KEY,
+#     "api_version": AZURE_OPENAI_API_VERSION,
+#     "endpoint": AZURE_OPENAI_ENDPOINT,
+#     "deployment_name": AZURE_OPENAI_DEPLOYMENT_NAME, # Default/primary deployment
+#     "max_retries": AZURE_OPENAI_MAX_RETRIES,
+#     # Consider adding a list of *all* valid deployment names if needed for matching
+#     # "valid_deployments": [AZURE_OPENAI_DEPLOYMENT_NAME, "other-deployment-name"]
+# }
 
 # --- Optional: Validate credentials on import ---
-def _validate_credentials():
-    missing_gemini = not all([_gemini_creds["api_key"], _gemini_creds["default_model"]])
-    missing_azure = not all([
-        _azure_creds["api_key"], _azure_creds["api_version"],
-        _azure_creds["endpoint"], _azure_creds["deployment_name"]
-    ])
-
-    if missing_gemini:
-        logger.warning("⚠️ Gemini credentials (GOOGLE_API_KEY, GOOGLE_MODEL) are missing or incomplete. Gemini models will be unavailable.")
-    else:
-        logger.info("✅ Gemini credentials loaded.")
-
-    if missing_azure:
-        logger.warning("⚠️ Azure OpenAI credentials (AZURE_OPENAI_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME) are missing or incomplete. Azure models will be unavailable.")
-    else:
-        logger.info("✅ Azure OpenAI credentials loaded.")
-
-_validate_credentials() # Run validation when module is imported
+# def _validate_credentials():
+#     missing_gemini = not all([_gemini_creds["api_key"], _gemini_creds["default_model"]])
+#     missing_azure = not all([
+#         _azure_creds["api_key"], _azure_creds["api_version"],
+#         _azure_creds["endpoint"], _azure_creds["deployment_name"]
+#     ])
+#
+#     if missing_gemini:
+#         logger.warning("⚠️ Gemini credentials (GOOGLE_API_KEY, GOOGLE_MODEL) are missing or incomplete. Gemini models will be unavailable.")
+#     else:
+#         logger.info("✅ Gemini credentials loaded.")
+#
+#     if missing_azure:
+#         logger.warning("⚠️ Azure OpenAI credentials (AZURE_OPENAI_KEY, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME) are missing or incomplete. Azure models will be unavailable.")
+#     else:
+#         logger.info("✅ Azure OpenAI credentials loaded.")
+#
+# _validate_credentials() # Run validation when module is imported
 
 # --- Factory Function ---
 def create_llm_client(requested_model: LLMResponseModel) -> LLMClient:

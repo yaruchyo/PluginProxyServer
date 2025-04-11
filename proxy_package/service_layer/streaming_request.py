@@ -20,10 +20,10 @@ from proxy_package.reporitory_layer.agents.tools import save_files_from_response
 from proxy_package.service_layer.formating import _format_sse_payload
 
 # from ..reporitory_layer.llm.llm_factory import get_llm_client # REMOVE this import
-from ..config import (  # Keep for potential defaults/info
-    AZURE_OPENAI_DEPLOYMENT_NAME,
-    GEMINI_DEFAULT_MODEL,
-)
+# from ..config import (  # Keep for potential defaults/info
+#     AZURE_OPENAI_DEPLOYMENT_NAME,
+#     GEMINI_DEFAULT_MODEL,
+# )
 from ..domain_layer.file_responce import Response
 
 # Import the SSE constants Enum
