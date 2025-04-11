@@ -1,0 +1,15 @@
+fastapi==0.115.12
+loguru==0.7.2
+openai==1.72.0
+pydantic==2.11.3
+python-dotenv==1.1.0
+uvicorn==0.34.0
+google-ai-generativelanguage==0.6.15
+google-api-core==2.22.0
+google-api-python-client==2.154.0
+google-genai==1.9.0
+google-generativeai==0.8.4
+google-resumable-media==2.7.2
+google_search_results==2.4.2
+googleapis-common-protos==1.65.0
+protobuf==5.29.3

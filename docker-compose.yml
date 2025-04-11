@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - HOST=0.0.0.0
+      - PORT=1234
+      - RELOAD=true
+      - WEB_CONCURRENCY=1
+      - LOG_LEVEL=info
+      - LLM_BACKEND=your_backend_value
+    ports:
+      - "1234:1234"
+    volumes:
+      - .:/app
+    command: python app.py
