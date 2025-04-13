@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 import json
 import os
 import uuid
@@ -7,12 +9,69 @@ import time
 import uvicorn
 from proxy_package.utils.logger import logger
 
+# Pydantic Models
+
+# Specific Argument Models
+class CreateFileArguments(BaseModel):
+    filepath: str
+    contents: str
+
+class RunTerminalCommand(BaseModel):
+    filepath: str
+    command: str
+# Request Models
+class RequestMessage(BaseModel):
+    role: str
+    content: Optional[str] = None
+    tool_call_id: Optional[str] = None # Added for tool response messages
+    # Add other potential fields if needed, e.g., tool_calls for user messages
+
+class ChatCompletionRequest(BaseModel):
+    messages: List[RequestMessage]
+    # Add other potential request fields if needed, e.g., model, stream, temperature
+
+# Response Chunk Models (for streaming)
+class FunctionCall(BaseModel):
+    name: Optional[str] = None
+    # Arguments is expected to be a JSON *string* by the OpenAI API format
+    arguments: Optional[str] = None
+
+class ToolCall(BaseModel):
+    index: Optional[int] = None
+    id: Optional[str] = None
+    type: Optional[str] = None
+    function: Optional[FunctionCall] = None
+
+class Delta(BaseModel):
+    role: Optional[str] = None
+    content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+
+class Choice(BaseModel):
+    index: Optional[int] = None
+    delta: Delta
+    finish_reason: Optional[str] = Field(None, alias="finish_reason")
+
+class ChatCompletionChunk(BaseModel):
+    id: Optional[str] = None
+    object: str = "chat.completion.chunk"
+    created: Optional[int]= None
+    model: Optional[str] = None
+    choices: List[Choice]
+
+class ErrorResponse(BaseModel):
+    error: str
+
+# FastAPI App
 app = FastAPI()
 
-async def stream_response(request_data):
+async def stream_response(request_data: Dict[str, Any]): # Use Dict temporarily
+    # Ideally, validate request_data against ChatCompletionRequest model
+    # For simplicity here, we'll keep using dict access
     messages = request_data.get("messages", [])
     if not messages:
-        yield f"data: {json.dumps({'error': 'No messages provided'})}\n\n"
+        error_resp = ErrorResponse(error="No messages provided")
+        yield f"data: {error_resp.model_dump_json()}\n\n"
         yield "data: [DONE]\n\n"
         return
 
@@ -21,64 +80,93 @@ async def stream_response(request_data):
     created = int(time.time())
     model = "azure"  # Adjust based on your setup
 
-    if last_message["role"] == "user":
+    if last_message.get("role") == "user":
         # User message: Stream a tool call response
         tool_call_id = f"call_{uuid.uuid4().hex}"
-        chunks = [
-            {
-                "id": completion_id,
-                "object": "chat.completion.chunk",
-                "created": created,
-                "model": model,
-                "choices": [
-                    {
-                        "index": 0,
-                        "delta": {
-                            "tool_calls": [
-                                {
-                                    "index": 0,
-                                    "id": tool_call_id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": "builtin_create_new_file",
-                                        "arguments": '{"filepath":"run.py","contents":"print(\'Hello, World 111!\')"}'
-                                    }
-                                }
-                            ]
-                        },
-                        "finish_reason": None
-                    }
-                ]
-            }
-        ]
-        for chunk in chunks:
-            yield f"data: {json.dumps(chunk)}\n\n"
+        # Define arguments using the specific Pydantic model
+        file_args = CreateFileArguments(
+            filepath="run.py",
+            contents="print('hello I love sofia')"
+            #builtin_create_new_file
+        )
+        file_args = RunTerminalCommand(
+            filepath="./",
+            command="git commit -m 'test'"
+        )
+        # Serialize arguments to a JSON string for the FunctionCall model
+        arguments_json_string = file_args.model_dump_json()
+
+        chunk_data = ChatCompletionChunk(
+            choices=[
+                Choice(
+                    delta=Delta(
+                        tool_calls=[
+                            ToolCall(
+                                type="function",
+                                function=FunctionCall(
+                                    name="builtin_run_terminal_command",
+                                    arguments=arguments_json_string # Pass the JSON string
+                                )
+                            )
+                        ]
+                    ),
+                    finish_reason=None # Typically finish_reason comes in a later chunk
+                )
+            ]
+        )
+        #Example: Send a final chunk with finish_reason="tool_calls"
+        # final_chunk_data = ChatCompletionChunk(
+        #     id=completion_id,
+        #     created=created,
+        #     model=model,
+        #     choices=[
+        #         Choice(
+        #             index=0,
+        #             delta=Delta(), # Empty delta
+        #             finish_reason="tool_calls"
+        #         )
+        #     ]
+        # )
+        yield f"data: {chunk_data.model_dump_json(exclude_none=True)}\n\n"
+        #yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
         yield "data: [DONE]\n\n"
 
-    elif last_message["role"] == "tool":
+    elif last_message.get("role") == "tool":
         # Tool response: Stream confirmation message
-        confirmation_content = "The file `run.py` has been created with the content:\n\n```python run.py\nprint('Hello, World 11111!')\n```"
-        chunks = [
-            {
-                "id": completion_id,
-                "object": "chat.completion.chunk",
-                "created": created,
-                "model": model,
-                "choices": [
-                    {
-                        "index": 0,
-                        "delta": {"content": confirmation_content},
-                        "finish_reason": None
-                    }
-                ]
-            },
-        ]
-        for chunk in chunks:
-            yield f"data: {json.dumps(chunk)}\n\n"
+        # In a real scenario, you'd likely parse the tool_call_id and content
+        # from the last_message to generate the confirmation.
+        confirmation_content = "The file `run.py` has been created with the content:\n\n```python run.py\nprint('Hello, World 111!')\n```" # Note: Content mismatch with user request example
+        chunk_data = ChatCompletionChunk(
+            id=completion_id,
+            created=created,
+            model=model,
+            choices=[
+                Choice(
+                    delta=Delta(role="assistant", content=confirmation_content), # Role should be assistant here
+                    finish_reason=None
+                )
+            ]
+        )
+        # Example: Send a final chunk with finish_reason="stop"
+        # final_chunk_data = ChatCompletionChunk(
+        #     id=completion_id,
+        #     created=created,
+        #     model=model,
+        #     choices=[
+        #         Choice(
+        #             index=0,
+        #             delta=Delta(), # Empty delta
+        #             finish_reason="stop"
+        #         )
+        #     ]
+        # )
+        #yield f"data: {chunk_data.model_dump_json(exclude_none=True)}\n\n"
+        #yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
         yield "data: [DONE]\n\n"
 
     else:
-        yield f"data: {json.dumps({'error': 'Unexpected message role'})}\n\n"
+        error_resp = ErrorResponse(error="Unexpected message role")
+        yield f"data: {error_resp.model_dump_json()}\n\n"
         yield "data: [DONE]\n\n"
 
 @app.post("/v1/chat/completions")
@@ -99,10 +187,17 @@ def start() -> None:
 
     logger.info(f"Starting Uvicorn server on {host}:{port}")
     logger.info(f"Workers: {workers}, Reload: {reload}, Log Level: {log_level}")
-    logger.info(f"Proxy Backend configured via LLM_BACKEND env var.")
+
+    # Adjust app string based on how you run the file
+    # If run directly: f"{__name__}:app"
+    # If part of a package and run via an entrypoint (e.g., main.py): "your_package.your_module:app"
+    # Example assuming direct run for testing:
+    app_string = f"{__name__}:app"
+    # Or if it's meant to be run via a different entrypoint like 'server.py'
+    # app_string = "server:app"
 
     uvicorn.run(
-        app="server:app",
+        app=app_string,
         host=host,
         port=port,
         reload=reload,
